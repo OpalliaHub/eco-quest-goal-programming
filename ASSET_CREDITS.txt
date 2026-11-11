@@ -1,0 +1,29 @@
+ECO QUEST ARTWORK AND RULES
+
+Pokémon illustrations from The Pokémon Company International's Pokédex:
+https://www.pokemon.com/us/pokedex/pikachu
+https://www.pokemon.com/us/pokedex/bulbasaur
+https://www.pokemon.com/us/pokedex/squirtle
+
+Pokédex image files:
+https://www.pokemon.com/static-assets/content-assets/cms2/img/pokedex/full/025.png
+https://www.pokemon.com/static-assets/content-assets/cms2/img/pokedex/full/001.png
+https://www.pokemon.com/static-assets/content-assets/cms2/img/pokedex/full/007.png
+
+Pokémon TCG scans from the Pokémon TCG API image service:
+https://images.pokemontcg.io/sv3pt5/25.png (Pikachu, Scarlet & Violet 151 025)
+https://images.pokemontcg.io/sv3pt5/206.png (Switch, Scarlet & Violet 151 206)
+https://images.pokemontcg.io/sv3pt5/207.png (Basic Psychic Energy, Scarlet & Violet 151 207)
+https://images.pokemontcg.io/sv3pt5/1.png (Bulbasaur, Scarlet & Violet 151 001)
+https://images.pokemontcg.io/sve/4.png (Basic Lightning Energy, Scarlet & Violet Energy 004)
+
+Official card checklist and references:
+https://www.pokemon.com/us/pokemon-tcg/scarlet-violet-151
+https://assets.pokemon.com/assets/cms2/pdf/trading-card-game/checklist/mew_web_cardlist_en.pdf
+https://www.pokemon.com/uk/features/designing-a-deck-from-scratch
+https://assets.pokemon.com/assets/cms2/pdf/trading-card-game/rulebook/pal_rulebook_en.pdf
+
+The drill starts from a fixed mid-match state. It follows the printed attack
+costs and damage and the one-manual-attachment rule. It leaves draws, the Bench,
+Prize cards and Weakness outside its scope. The deck inventory coefficients and
+practice points are classroom assumptions. The project is a classroom fan activity.

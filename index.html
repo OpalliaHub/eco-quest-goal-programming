@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Plan a school eco fair in five Pokémon-themed planning scenarios. Explore hard limits, weighted goals and optimal plans.">
+  <title>Eco Quest | Pokémon Goal Programming Lab</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="solver.js" defer></script>
+  <script src="scenarios.js" defer></script>
+  <script src="duel-model.js" defer></script>
+  <script src="duel-ui.js" defer></script>
+  <script src="battle-model.js" defer></script>
+  <script src="app.js" defer></script>
+  <script src="battle.js" defer></script>
+  <script src="locale.js" defer></script>
+  <script src="learning.js" defer></script>
+  <link rel="stylesheet" href="learning.css">
+</head>
+<body>
+  <a class="skip" href="#quest">Skip to the quest</a>
+  <header class="topbar">
+    <div class="shell top-inner">
+      <a class="brand" href="#top"><span class="ball" aria-hidden="true"></span>Eco Quest</a>
+      <nav aria-label="Sections">
+        <a href="#quest">Missions</a>
+        <a href="#model">Model guide</a>
+        <a href="#journal">Field notes</a>
+      </nav>
+      <span class="progress" id="progress" aria-label="Badges earned">0 / 7 badges</span>
+    </div>
+  </header>
+  <main class="shell" id="top">
+    <section id="learning" class="section panel"></section>
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-text">
+        <p class="kicker"><span aria-hidden="true">✦</span> THE SCHOOL ECO FAIR</p>
+        <h1 id="page-title">Eco<br> Quest<span>.</span></h1>
+        <p>Plan a fair, grow berries, pack supplies, survey habitats and prepare TCG decks. Every team has two goals and limited resources.</p>
+        <a class="button primary" href="#quest">Start the quest <span aria-hidden="true">↘</span></a>
+      </div>
+      <div class="hero-scene" aria-hidden="true">
+        <span class="orbit orbit-one"></span><span class="orbit orbit-two"></span>
+        <span class="spark spark-a">✦</span><span class="spark spark-b">✧</span><span class="spark spark-c">✦</span>
+        <img class="hero-bulbasaur" src="assets/bulbasaur.png" alt="">
+        <img class="hero-squirtle" src="assets/squirtle.png" alt="">
+        <img class="hero-pikachu" src="assets/pikachu.png" alt="">
+      </div>
+    </section>
+
+    <section id="quest" class="section" aria-labelledby="quest-title">
+      <div class="section-head"><div><p class="kicker">TRAINER MISSIONS</p><h2 id="quest-title">Five places to plan</h2></div></div>
+      <div class="module-list" role="group" aria-label="Choose a planning scenario">
+        <button class="module-card" type="button" data-module="fair" aria-pressed="true"><span>01</span> Eco Fair</button>
+        <button class="module-card" type="button" data-module="garden" aria-pressed="false"><span>02</span> Berry Garden</button>
+        <button class="module-card" type="button" data-module="center" aria-pressed="false"><span>03</span> Center Supplies</button>
+        <button class="module-card" type="button" data-module="field" aria-pressed="false"><span>04</span> Field Survey</button>
+        <button class="module-card" type="button" data-module="cards" aria-pressed="false"><span>05</span> TCG Club</button>
+      </div>
+      <div class="scenario-intro"><h3 id="scenario-title"></h3><p id="scenario-purpose"></p><div class="scenario-links"><a href="#model">View the model ↓</a><a class="button outline" id="arena-link" href="#arena">Play the planning duel ⚡</a></div></div>
+      <div id="mission-list" class="mission-list" role="group" aria-label="Choose a mission"></div>
+      <div class="panel card-library" id="card-library" hidden>
+        <div><h3>Three kinds of cards</h3><p>Each practice deck counts 60 cards across these three categories.</p><a href="https://www.pokemon.com/uk/features/designing-a-deck-from-scratch" rel="noreferrer">Official deckbuilding guide ↗</a><br><a href="#battle">Try the battle drill ↓</a></div>
+        <figure><img src="assets/card-pikachu.png" alt="Pikachu from Scarlet and Violet 151, card 025"><figcaption><strong>Pokémon</strong><br>Pikachu 025</figcaption></figure>
+        <figure><img src="assets/card-switch.png" alt="Switch from Scarlet and Violet 151, card 206"><figcaption><strong>Trainer</strong><br>Switch 206</figcaption></figure>
+        <figure><img src="assets/card-energy.png" alt="Basic Energy from Scarlet and Violet 151, card 207"><figcaption><strong>Energy</strong><br>Basic Energy 207</figcaption></figure>
+      </div>
+
+      <div class="playground">
+        <aside class="party panel" aria-labelledby="partner-title">
+          <h3 id="partner-title">Choose a partner</h3>
+          <p>Partners set the weights of the two goals in Free Lab.</p>
+          <div class="partner-list" role="group" aria-label="Partner and Free Lab weights">
+            <button type="button" class="partner electric" data-partner="pikachu" aria-pressed="false">
+              <img src="assets/pikachu.png" alt=""><span><strong>Pikachu</strong><small>Goal 1 × 3 · Goal 2 × 1</small></span><span class="pick-indicator" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="partner grass" data-partner="bulbasaur" aria-pressed="false">
+              <img src="assets/bulbasaur.png" alt=""><span><strong>Bulbasaur</strong><small>Goal 1 × 1 · Goal 2 × 3</small></span><span class="pick-indicator" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="partner water" data-partner="squirtle" aria-pressed="true">
+              <img src="assets/squirtle.png" alt=""><span><strong>Squirtle</strong><small>Goal 1 × 1 · Goal 2 × 1</small></span><span class="pick-indicator" aria-hidden="true"></span>
+            </button>
+          </div>
+          <button type="button" class="button outline" id="free-lab" aria-pressed="false">Open Free Lab <span aria-hidden="true">↗</span></button>
+        </aside>
+
+        <div class="panel activity">
+          <p class="kicker" id="mission-label"></p>
+          <h3 id="mission-title"></h3>
+          <p class="question" id="mission-question"></p>
+          <p class="settings" id="mission-settings"></p>
+          <form id="prediction-form">
+            <fieldset>
+              <legend>Make a prediction</legend>
+              <div id="answers" class="choices"></div>
+            </fieldset>
+            <button class="button primary" type="submit">Test prediction <span aria-hidden="true">→</span></button>
+          </form>
+          <form id="lab-form" hidden>
+            <div class="lab-inputs" id="lab-inputs"></div>
+            <button class="button primary" type="submit">Run all 81 plans <span aria-hidden="true">→</span></button>
+          </form>
+          <p id="feedback" class="feedback" role="status" hidden></p>
+        </div>
+      </div>
+
+      <section id="arena" class="panel arena" aria-labelledby="arena-title" hidden>
+        <div class="arena-heading">
+          <div><p class="kicker">PARTNER ARENA</p><h3 id="arena-title"></h3><p id="arena-brief"></p></div>
+          <span class="arena-turn" id="arena-turn">PLAN FIRST</span>
+        </div>
+        <form id="arena-setup">
+          <div class="arena-setup-grid">
+            <div>
+              <label for="arena-preset">Scenario setting</label>
+              <select id="arena-preset"></select>
+              <p id="arena-variables"></p>
+              <details open>
+                <summary>Resource limits and goal equations</summary>
+                <ul id="arena-equations"></ul>
+                <p class="formula" id="arena-score-rule"></p>
+              </details>
+            </div>
+            <div class="arena-predict">
+              <h4>Predict your plan</h4>
+              <p>Choose whole numbers from 0 to 8. Write one constraint check before making a move.</p>
+              <div class="arena-inputs">
+                <label for="arena-x">Predicted x<input id="arena-x" type="number" min="0" max="8" step="1" required></label>
+                <label for="arena-y">Predicted y<input id="arena-y" type="number" min="0" max="8" step="1" required></label>
+              </div>
+              <label for="arena-reason">Your constraint check</label>
+              <textarea id="arena-reason" rows="3" maxlength="500" required placeholder="For my plan, … must be at most …"></textarea>
+              <button type="submit" class="button primary">Start duel <span aria-hidden="true">→</span></button>
+            </div>
+          </div>
+        </form>
+        <div id="arena-play" hidden>
+          <p class="arena-setting" id="arena-setting"></p>
+          <div class="arena-scene" id="arena-scene" aria-hidden="true">
+            <div class="arena-creature arena-you"><span id="arena-your-name"></span><img id="arena-your-art" src="assets/pikachu.png" alt=""></div>
+            <div class="arena-vs"><span>VS</span><strong id="arena-impact">✦</strong></div>
+            <div class="arena-creature arena-rival"><span id="arena-rival-name"></span><img id="arena-rival-art" src="assets/bulbasaur.png" alt=""></div>
+          </div>
+          <p class="arena-rival-rule" id="arena-rival-rule"></p>
+          <div class="arena-play-grid">
+            <div>
+              <h4 id="arena-board-title"></h4>
+              <div id="arena-board" class="arena-board"></div>
+              <div id="arena-moves" class="arena-moves" role="group" aria-label="Planning moves"></div>
+              <div class="arena-commit">
+                <button class="button primary" id="arena-lock" type="button">Lock my plan</button>
+                <button class="button outline" id="arena-reset" type="button">Return to setup</button>
+              </div>
+            </div>
+            <div class="arena-meters">
+              <div>
+                <h4 id="arena-plan">Your plan</h4>
+                <dl id="arena-resources" class="arena-resources"></dl>
+              </div>
+              <div>
+                <h4>Goal meters</h4>
+                <div id="arena-goals"></div>
+                <p class="arena-live-score" id="arena-live-score"></p>
+              </div>
+            </div>
+          </div>
+          <p class="feedback" id="arena-feedback" role="status"></p>
+          <details class="arena-trace"><summary>Turn trace</summary><ol id="arena-history"></ol></details>
+        </div>
+        <div class="arena-finish" id="arena-finish" hidden>
+          <div><p class="kicker">VERIFY AND EXPLAIN</p><h4 id="arena-verdict"></h4><p id="arena-proof"></p><button class="button outline" type="button" id="arena-map">Open verified plan map ↓</button></div>
+          <form id="arena-analysis">
+            <label for="arena-reflection" id="arena-prompt"></label>
+            <textarea id="arena-reflection" rows="3" maxlength="800" required></textarea>
+            <button class="button primary" type="submit">Save explanation</button>
+            <p id="arena-saved" role="status"></p>
+          </form>
+        </div>
+      </section>
+
+      <section id="results" class="panel result-section" aria-labelledby="result-title" hidden>
+        <div class="results-head">
+          <div><p class="kicker">SEARCH RESULTS</p><h3 id="result-title">The plan map</h3><p id="run-settings" class="muted"></p></div>
+          <div class="result-stats" id="result-stats"></div>
+        </div>
+        <div class="result-layout">
+          <div>
+            <p class="axis-y" id="axis-y"></p>
+            <div class="plan-grid" id="grid" role="group" aria-label="Plan map. Use arrow keys to move between plans."></div>
+            <p class="axis-x" id="axis-x"></p>
+            <ul class="legend" aria-label="Plan map legend">
+              <li><span class="sample blocked">×</span> Infeasible</li>
+              <li><span class="sample feasible">·</span> Feasible</li>
+              <li><span class="sample best">★</span> Optimal</li>
+            </ul>
+          </div>
+          <div class="inspector">
+            <h4 id="plan-title">Selected plan</h4>
+            <p id="plan-status"></p>
+            <dl id="plan-details"></dl>
+            <div id="goal-bars"></div>
+            <p id="plan-score"></p>
+            <h4>All optimal plans</h4>
+            <div class="ties" id="ties"></div>
+          </div>
+        </div>
+      </section>
+        <div class="encounter" id="encounter" hidden>
+          <div class="encounter-copy"><p class="kicker">PARTNER TRIAL</p><h4 id="encounter-title"></h4><p id="encounter-result" role="status"></p><button type="button" class="button primary" id="encounter-play">Play selected plan ⚡</button></div>
+          <div class="encounter-scene" id="encounter-scene" aria-hidden="true">
+            <img id="encounter-left" src="assets/pikachu.png" alt=""><span id="encounter-burst" class="encounter-burst">✦</span><img id="encounter-right" src="assets/bulbasaur.png" alt="">
+          </div>
+        </div>
+      <section class="panel battle" id="battle" aria-labelledby="battle-title" hidden>
+        <p class="kicker">TCG CLUB · BONUS DRILL</p>
+        <h3 id="battle-title">Pikachu vs Bulbasaur</h3>
+        <p>Can you win with at least 20 HP and keep one Water Energy in hand? This fixed drill starts mid-match. It models attachment, attack costs, damage and healing.</p>
+        <div class="battle-stage" id="battle-stage">
+          <div class="fighter player">
+            <div class="fighter-info"><strong>Pikachu</strong><span id="pika-hp-label">60 / 60 HP</span></div>
+            <progress max="60" value="60" id="pika-hp" aria-label="Pikachu HP"></progress>
+            <img src="assets/card-pikachu.png" alt="Pikachu trading card">
+            <span class="hit-number" id="pika-hit" aria-hidden="true"></span>
+          </div>
+          <div class="battle-middle"><span id="battle-turn">TURN 1</span><strong>VS</strong><span class="battle-flash" aria-hidden="true">✦</span></div>
+          <div class="fighter rival">
+            <div class="fighter-info"><strong>Bulbasaur</strong><span id="bulba-hp-label">70 / 70 HP</span></div>
+            <progress max="70" value="70" id="bulba-hp" aria-label="Bulbasaur HP"></progress>
+            <img src="assets/card-bulbasaur.png" alt="Bulbasaur trading card">
+            <span class="hit-number" id="bulba-hit" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="battle-resources">
+          <div><strong>In hand</strong><span id="battle-hand"></span></div>
+          <div><strong>Attached to Pikachu</strong><span id="battle-energy"></span></div>
+          <div><strong>Deck reserve</strong><span id="battle-deck"></span></div>
+        </div>
+        <div class="battle-controls" role="group" aria-label="Battle actions">
+          <button class="button outline" type="button" data-action="lightning"><img class="energy-thumb" src="assets/card-lightning.png" alt="">Attach Lightning</button>
+          <button class="button outline" type="button" data-action="water">Attach Water</button>
+          <button class="button primary" type="button" data-action="charge">Charge</button>
+          <button class="button primary" type="button" data-action="punch">Pika Punch</button>
+          <button class="button outline" type="button" data-action="pass">End turn</button>
+          <button class="button outline" type="button" id="battle-reset">Restart</button>
+        </div>
+        <p class="battle-costs"><strong>Charge:</strong> 1 Lightning. It attaches Lightning from the deck. <strong>Pika Punch:</strong> 2 Lightning plus 1 Energy of any type, 50 damage. Bulbasaur has the Energy for Leech Seed, which deals 20 and heals up to 20.</p>
+        <p class="feedback" id="battle-message" role="status">Predict which move gives Pikachu enough Energy to attack on turn 2.</p>
+        <details><summary>Turn log and drill rules</summary><ol id="battle-log"></ol><p>The setup fixes the hand and reserves. The drill omits draws, Bench, Prize cards and Weakness. Attached Energy stays attached after these attacks. Compare a win that preserves Water with a win that uses it.</p></details>
+      </section>
+    </section>
+
+    <section id="model" class="section" aria-labelledby="model-title">
+      <div class="section-head"><div><p class="kicker">MATH GUIDE</p><h2 id="model-title">What makes a good plan?</h2></div></div>
+      <div class="panel model-content">
+        <div>
+          <h3 id="model-heading">Build your plan</h3>
+          <p id="variables"></p>
+          <div class="model-table"><table id="data-table"></table></div>
+        </div>
+        <div>
+          <h3>Check limits, then score goals</h3>
+          <p id="model-notes"></p>
+          <p>For each goal, calculate <strong>shortfall = max(0, target − output)</strong>. A smaller weighted score is better.</p>
+          <p class="formula" id="formula"></p>
+          <p>The search keeps every feasible plan with the lowest score. If a goal has weight zero, check both shortfalls separately even when the score is zero.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="journal" class="section journal panel" aria-labelledby="journal-title">
+      <div>
+        <p class="kicker">TRAINER JOURNAL</p>
+        <h2 id="journal-title">Defend your recommendation</h2>
+        <p>State your weights, your plan, both shortfalls and one assumption. Download your reasoning, mission evidence and the latest duel for each setting.</p>
+        <p id="journal-status" class="muted"></p>
+      </div>
+      <form id="journal-form">
+        <label for="reasoning">Your explanation</label>
+        <textarea id="reasoning" rows="4" maxlength="1500" placeholder="We chose plan (…) under weights (…) because …"></textarea>
+        <button type="submit" class="button outline">Download field notes <span aria-hidden="true">↓</span></button>
+      </form>
+    </section>
+  </main>
+  <footer class="shell footer">
+    <span>INT6064 · Coding and Computational Thinking</span>
+    <span>Classroom fan project · Pokémon artwork from the <a href="https://www.pokemon.com/us/pokedex/" rel="noreferrer">official Pokédex</a></span>
+  </footer>
+  <noscript><p class="shell">Enable JavaScript to run the missions.</p></noscript>
+</body>
+</html>

@@ -2,9 +2,10 @@
 (function () {
   'use strict';
   const host = document.getElementById('learning');
-  let language = 'en';
-  try { language = localStorage.getItem('ecoquest-language') || 'en'; } catch (_) {}
+  let language = 'zh';
+  try { language = localStorage.getItem('ecoquest-language') || 'zh'; } catch (_) {}
   let part = 'fair', level = 0, step = 0, phase = 0, timer;
+  let screen = 'home', stage = 'story', activeDuelPart = null;
   let showMath = false, introAnswer = '', introOpen = true;
   const units = {HKD:'港元','person-hours':'人时',batches:'批',sheets:'张',L:'升',hours:'小时',beds:'块',crates:'箱',points:'分',units:'单位','time blocks':'时段',packs:'个',minutes:'分钟',rounds:'轮',photos:'张',cards:'张',boxes:'个'};
   const unit = value => language === 'zh' ? (units[value] || value) : value;
@@ -101,6 +102,57 @@
       const bar=el('progress',undefined,box);bar.max=goal.target;bar.value=Math.min(goal.target,chosen.values[i]);bar.setAttribute('aria-label',term(goal.name));
     });
   }
+  const stages = {story:['Meet the mission','故事与任务'],build:['Build your plan','搭建方案'],algorithm:['Watch the algorithm','观察算法'],duel:['Play a challenge','互动对战'],reflect:['Explain your choice','解释与反思']};
+  function navigate(id, page='story') {
+    location.hash = id === 'home' ? 'home' : `part/${id}/${page}`;
+  }
+  function route() {
+    const bits = location.hash.slice(1).split('/');
+    clearInterval(timer); timer=undefined;
+    if(bits[0]==='part' && names[bits[1]]) {
+      screen='part';
+      if(part!==bits[1]) {part=bits[1];level=0;step=0;phase=0;plan=[0,0];prediction='';reflection='';submitted=false;}
+      stage=stages[bits[2]]?bits[2]:'story';
+    } else {screen='home';}
+    render(); window.scrollTo({top:0,behavior:'instant'});
+  }
+  function cover() {
+    const hero=el('section',undefined,host,'portal-cover');
+    const copy=el('div',undefined,hero);
+    el('p','INT6064 · ECO QUEST',copy,'kicker');
+    el('h1',t('Small plans. Big adventures.','小小规划，\n开启大冒险。'),copy);
+    el('p',t('A Pokémon-themed learning platform for high-school students. Learn how goal programming balances several wishes when resources are limited. No coding experience needed.','面向高中生的宝可梦主题学习平台。在资源有限的情况下，学会用目标规划兼顾多个愿望。无需编程基础，从生活中的选择开始。'),copy);
+    button(t('Start with Part 01 →','从 Part 01 开始 →'),()=>navigate('fair'),copy);
+    const art=el('div',undefined,hero,'portal-art');
+    for(const id of ['bulbasaur','pikachu','squirtle']) {const img=el('img',undefined,art);img.src=`assets/${id}.png`;img.alt=id;}
+    const background=el('div',undefined,host,'portal-background');
+    el('h2',t('Welcome to the campus adventure','欢迎来到校园冒险计划'),background);
+    el('p',t('Pikachu and friends are preparing a school eco festival. They need a fair, a berry garden, supplies, a field survey and a card club. You are the planner: decide how to share limited money, time and materials while helping everyone reach their goals.','皮卡丘和伙伴们正在筹备校园环保节：办市集、种树果、准备补给、调查自然，还有卡牌社团活动。你是小队的规划员，要分配有限的钱、时间与材料，帮助伙伴们尽量实现各自的目标。'),background);
+    el('p',t('Each part is independent. Follow five short steps: story → plan → algorithm → battle → reflection. Choose one of three difficulty levels inside each part.','每个 Part 都可以独立进入。按照五个短步骤学习：听故事 → 做方案 → 看算法 → 玩对战 → 说理由。进入后可选择基础、进阶或挑战难度。'),background);
+    el('h2',t('Choose your next adventure','选择你的冒险 Part'),host);
+    const cards=el('div',undefined,host,'portal-parts');
+    const summaries={fair:['Make recycled paper products and balance fundraising with paper reuse.','制作再生纸产品，兼顾筹款和旧纸再利用。'],garden:['Allocate garden beds to balance berry harvest and habitat.','安排种植床，兼顾树果收成与栖息地。'],center:['Pack supplies for the center and the outdoor team.','分配补给包，兼顾中心准备度与野外需求。'],field:['Plan survey rounds for useful photos and habitat coverage.','安排调查轮次，兼顾有效照片与栖息地覆盖。'],cards:['Build practice decks, then try resource-aware card battles.','配置练习牌组，再体验考虑资源限制的卡牌对战。']};
+    Object.keys(names).forEach((id,i)=>{
+      const card=el('a',undefined,cards,'portal-part');card.href=`#part/${id}/story`;
+      const img=el('img',undefined,card);img.src=`assets/${QuestStories[id].partner}.png`;img.alt='';
+      el('span',`PART 0${i+1}`,card,'kicker');el('h3',t(...names[id]),card);el('p',t(...summaries[id]),card);
+      el('span',t('3 levels · enter →','3 个难度 · 进入 →'),card,'portal-enter');
+    });
+    introOpen=false;introduction();
+  }
+  function stageMarker(name) {const mark=el('span',undefined,host);mark.dataset.stageMarker=name;mark.hidden=true;}
+  function arrangeStages() {
+    let active=null;
+    for(const node of [...host.children]) {
+      if(node.dataset.stageMarker){active=node.dataset.stageMarker;node.remove();continue;}
+      if(active){node.dataset.lessonStage=active;node.hidden=active!==stage;}
+    }
+    const nav=el('nav',undefined,host,'portal-next');nav.setAttribute('aria-label',t('Lesson navigation','学习步骤导航'));
+    const keys=Object.keys(stages), index=keys.indexOf(stage);
+    if(index>0) button(t('← Previous','← 上一步'),()=>navigate(part,keys[index-1]),nav);
+    if(index<keys.length-1) button(t('Next: ','下一步：')+t(...stages[keys[index+1]]),()=>navigate(part,keys[index+1]),nav);
+    else button(t('Choose another part →','选择其他 Part →'),()=>navigate('home'),nav);
+  }
   function render() {
     host.replaceChildren();
     const header = el('div', undefined, host, 'learn-controls');
@@ -112,26 +164,33 @@
     }, header);
     host.lang = language === 'zh' ? 'zh-CN' : 'en';
     document.dispatchEvent(new CustomEvent('ecoquest:language', {detail:language}));
-    el('p', t('Five parts, three challenges each. Predict, build a plan, inspect the algorithm, then defend your decision.', '五个主题，每个主题三道分级挑战。先预测，再搭建方案，观察算法，最后解释自己的决策。'), host);
-    introduction();
-    const tabs = el('div', undefined, host, 'learn-controls');
-    for (const [id, label] of Object.entries(names)) {
-      const b = button(t(...label), () => { part = id; reset(); }, tabs);
-      b.setAttribute('aria-pressed', String(id === part));
-    }
+    const legacy=document.getElementById('legacy-activities');
+    legacy.querySelector('.portal-next')?.remove();
+    legacy.hidden=screen==='home'||stage!=='duel';
+    document.body.dataset.page=screen;
+    if(screen==='home'){cover();return;}
+    const crumb=el('div',undefined,host,'portal-breadcrumb');
+    button(t('← All parts','← 返回首页'),()=>navigate('home'),crumb);
+    el('span',`PART 0${Object.keys(names).indexOf(part)+1} / ${t(...names[part])}`,crumb);
+    const steps=el('nav',undefined,host,'portal-steps');steps.setAttribute('aria-label',t('Learning steps','学习步骤'));
+    Object.entries(stages).forEach(([id,label],i)=>{const b=button(`${i+1}. ${t(...label)}`,()=>navigate(part,id),steps);b.setAttribute('aria-current',id===stage?'step':'false');});
+    el('h2',t(...stages[stage]),host);
     const levels = el('div', undefined, host, 'learn-controls');
+    levels.hidden = stage === 'duel';
     [t('Foundation · balance two goals','基础 · 平衡两个目标'),t('Intermediate · priorities','进阶 · 改变目标权重'),t('Challenge · resource upgrade','挑战 · 资源升级')].forEach((label, i) => {
       const b = button(label, () => { level = i; reset(); }, levels);
       b.setAttribute('aria-pressed', String(level === i));
     });
     const result = run(), model = result.model;
-    if (part === 'cards') button(t('Open three playable card battles','打开三道可操作卡牌对战'), () => { document.querySelector('[data-module=cards]').click(); document.getElementById('battle').scrollIntoView({behavior:'smooth'}); }, host);
+    stageMarker('story');
     const chosen = result.candidates.find(p => p.x === plan[0] && p.y === plan[1]);
     storyScene(model, chosen, result);
     el('h3', t(...names[part]) + ' — ' + t('Mission ', '任务 ') + (level + 1), host);
     el('p', level === 0 ? t('Find a feasible plan with the smallest total weighted shortfall. Explain whether both targets can be met.', '寻找加权偏差总和最小的可行方案，说明两个目标能否同时达成。') : level === 1 ? t('Goal 1 now has weight 3. Predict whether the best plan changes. Explain why the feasible set stays the same.', '目标一的权重变为 3。预测最优方案是否变化，并解释为什么可行域保持相同。') : t('The first editable resource has been increased by 20%, rounded up. Compare the best score with the original resources. Is this resource the bottleneck?', '第一个可调整资源增加 20% 并向上取整。与原资源下的最优分数比较，这项资源是否为瓶颈？'), host);
     el('p', t('Decision variables: ', '决策变量：') + ['x', 'y'].map((v, i) => `${v} = ${language === 'zh' ? products[part][i] : model.products[i]}`).join('；') + t('. Both are integers from 0 to 8.', '。两者均为 0 至 8 的整数。'), host);
+    stageMarker('build');
     const modelDetails = el('details', undefined, host, 'story-intro');
+    modelDetails.open=true;
     el('summary',t('Translate the story into a mathematical model','把故事写成数学模型'),modelDetails);
     const table = el('table', undefined, modelDetails, 'learn-table');
     model.resources.forEach((r, i) => {
@@ -150,11 +209,13 @@
       button(`− ${i === 0 ? 'x' : 'y'}`, () => { plan[i]--; submitted = false; render(); }, actions, plan[i] === 0);
     }
     el('p', `${t('Your plan','你的方案')} (${plan.join(', ')}) · Z = ${n(chosen.score)}`, host);
+    model.goals.forEach((g,i)=>{const box=el('div',undefined,host,'story-goal');el('p',`${term(g.name)}: ${chosen.values[i]} / ${g.target} ${unit(g.unit)} · ${t('Shortfall','还差')} ${chosen.shortfalls[i]}`,box);const bar=el('progress',undefined,box);bar.max=g.target;bar.value=Math.min(g.target,chosen.values[i]);bar.setAttribute('aria-label',term(g.name));});
     const tokens = el('div', undefined, host, 'learn-tokens');
     for (let i=0;i<plan[0]+plan[1];i++) el('span', (i<plan[0] ? QuestStories[part].icons[0]+' x' : QuestStories[part].icons[1]+' y'), tokens);
     button(t('Check my plan','检查我的方案'), () => { submitted = true; render(); }, actions);
     if (submitted) el('p', prediction.trim() ? (Math.abs(chosen.score-result.bestScore)<1e-9 ? t('Optimal! Explain the remaining shortfalls and any tied plans.','达到最优！请解释剩余偏差及并列最优方案。') : t('Feasible, but a lower score is possible. Use the walkthrough to find a better plan.','方案可行，但存在更低分数。使用下方演示寻找更好的方案。')) : t('Write your prediction and a constraint check first.','请先填写预测及约束检验。'), host, 'learn-feedback');
-    button(showMath ? t('Hide algorithm details','收起算法细节') : t('Ready? Explore how the computer chooses','准备好了吗？看看电脑怎样选方案'), () => { showMath=!showMath; if(!showMath){clearInterval(timer);timer=undefined;} render(); }, host);
+    stageMarker('algorithm');
+    showMath = stage === 'algorithm';
     if(showMath) {
     el('p',t('g is the achieved amount; d− is the remaining shortfall; d+ is the surplus. s converts a shortfall into scoring units. w is its importance. Z is the total weighted shortfall, so lower is better.', 'g 是实际完成量；d⁻ 是距离目标还差的量；d⁺ 是超出目标的量。s 把偏差换算成比较用的单位，w 表示重视程度，Z 是加权偏差总分，越小越好。'),host);
     el('h3', t('Watch the algorithm run','观察算法如何运行'), host);
@@ -198,6 +259,7 @@
       el('p',`${t('Original baseline score','原始条件分数')} = ${n(original.bestScore)}; ${t('current score','当前分数')} = ${n(result.bestScore)}.`,host);
     }
     }
+    stageMarker('reflect');
     const reflectionLabel=el('label',t('Explain your decision, the weights and a modelling limitation','解释你的决策、目标权重和一项模型局限'),host);
     const notes=el('textarea',undefined,reflectionLabel);notes.value=reflection;notes.oninput=()=>{reflection=notes.value;};
     button(t('Download this mission evidence','下载本题学习记录'),()=>{
@@ -205,6 +267,14 @@
       const url=URL.createObjectURL(new Blob([JSON.stringify(record,null,2)],{type:'application/json'}));
       const a=el('a');a.href=url;a.download=`ecoquest-${part}-${level+1}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     },host);
+    stageMarker('duel');
+    el('p',t('Apply your planning skills in a playable challenge below. Choose a setting, predict a plan, then observe how each move uses resources and changes your goals.','在下方互动挑战中运用你的规划知识。选择情景、预测方案，再观察每一步如何消耗资源、改变目标进度。'),host);
+    arrangeStages();
+    if(stage==='duel'){
+      if(activeDuelPart!==part){document.querySelector(`[data-module=${part}]`).click();activeDuelPart=part;}
+      const next=host.querySelector('.portal-next');legacy.append(next);
+    }
   }
-  render();
+  window.addEventListener('hashchange',route);
+  route();
 })();

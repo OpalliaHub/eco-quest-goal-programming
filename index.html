@@ -19,36 +19,17 @@
   <link rel="stylesheet" href="learning.css">
 </head>
 <body>
-  <a class="skip" href="#quest">Skip to the quest</a>
+  <a class="skip" href="#learning">Skip to the quest</a>
   <header class="topbar">
     <div class="shell top-inner">
-      <a class="brand" href="#top"><span class="ball" aria-hidden="true"></span>Eco Quest</a>
-      <nav aria-label="Sections">
-        <a href="#quest">Missions</a>
-        <a href="#model">Model guide</a>
-        <a href="#journal">Field notes</a>
-      </nav>
-      <span class="progress" id="progress" aria-label="Badges earned">0 / 7 badges</span>
+      <a class="brand" href="#home"><span class="ball" aria-hidden="true"></span>Eco Quest</a>
+      <a class="portal-home-link" href="#home">Eco Quest · Home / 首页</a>
+      <span class="progress" id="progress" aria-label="Badges earned" hidden>0 / 7 badges</span>
     </div>
   </header>
   <main class="shell" id="top">
     <section id="learning" class="section panel"></section>
-    <section class="hero" aria-labelledby="page-title">
-      <div class="hero-text">
-        <p class="kicker"><span aria-hidden="true">✦</span> THE SCHOOL ECO FAIR</p>
-        <h1 id="page-title">Eco<br> Quest<span>.</span></h1>
-        <p>Plan a fair, grow berries, pack supplies, survey habitats and prepare TCG decks. Every team has two goals and limited resources.</p>
-        <a class="button primary" href="#quest">Start the quest <span aria-hidden="true">↘</span></a>
-      </div>
-      <div class="hero-scene" aria-hidden="true">
-        <span class="orbit orbit-one"></span><span class="orbit orbit-two"></span>
-        <span class="spark spark-a">✦</span><span class="spark spark-b">✧</span><span class="spark spark-c">✦</span>
-        <img class="hero-bulbasaur" src="assets/bulbasaur.png" alt="">
-        <img class="hero-squirtle" src="assets/squirtle.png" alt="">
-        <img class="hero-pikachu" src="assets/pikachu.png" alt="">
-      </div>
-    </section>
-
+    <div id="legacy-activities" hidden>
     <section id="quest" class="section" aria-labelledby="quest-title">
       <div class="section-head"><div><p class="kicker">TRAINER MISSIONS</p><h2 id="quest-title">Five places to plan</h2></div></div>
       <div class="module-list" role="group" aria-label="Choose a planning scenario">
@@ -61,7 +42,7 @@
       <div class="scenario-intro"><h3 id="scenario-title"></h3><p id="scenario-purpose"></p><div class="scenario-links"><a href="#model">View the model ↓</a><a class="button outline" id="arena-link" href="#arena">Play the planning duel ⚡</a></div></div>
       <div id="mission-list" class="mission-list" role="group" aria-label="Choose a mission"></div>
       <div class="panel card-library" id="card-library" hidden>
-        <div><h3>Three kinds of cards</h3><p>Each practice deck counts 60 cards across these three categories.</p><a href="https://www.pokemon.com/uk/features/designing-a-deck-from-scratch" rel="noreferrer">Official deckbuilding guide ↗</a><br><a href="#battle">Try the battle drill ↓</a></div>
+        <div><h3>Three kinds of cards</h3><p>Each practice deck counts 60 cards across these three categories.</p><a href="https://www.pokemon.com/uk/features/designing-a-deck-from-scratch" rel="noreferrer">Official deckbuilding guide ↗</a></div>
         <figure><img src="assets/card-pikachu.png" alt="Pikachu from Scarlet and Violet 151, card 025"><figcaption><strong>Pokémon</strong><br>Pikachu 025</figcaption></figure>
         <figure><img src="assets/card-switch.png" alt="Switch from Scarlet and Violet 151, card 206"><figcaption><strong>Trainer</strong><br>Switch 206</figcaption></figure>
         <figure><img src="assets/card-energy.png" alt="Basic Energy from Scarlet and Violet 151, card 207"><figcaption><strong>Energy</strong><br>Basic Energy 207</figcaption></figure>
@@ -281,6 +262,7 @@
         <button type="submit" class="button outline">Download field notes <span aria-hidden="true">↓</span></button>
       </form>
     </section>
+    </div>
   </main>
   <footer class="shell footer">
     <span>INT6064 · Coding and Computational Thinking</span>

@@ -45,3 +45,7 @@ The 15 settings were checked for 81 candidates and at least one optimum. Battle 
 ## License and assets
 
 Original application code is released under the MIT License. Pokémon names, artwork and card images belong to their respective rights holders and are excluded from that code license. See ASSET_CREDITS.txt for individual sources and teaching-rule scope. This is an unofficial educational fan project. Users distributing third-party images must consider the applicable permissions.
+
+## Student coding studio
+
+Open Part 01 → Code your solver. Foundation starts with a running program that accepts over-budget or overtime plans. Insert an executable guard, test a prediction and inspect the first failing pair. Intermediate introduces incorrect weighting and drops tied solutions. Challenge opens an empty workspace and exposes an accumulator so learners can add each goal's penalty separately. The interpreter runs student blocks on raw mission data. The reference search checks their predictions and outputs. Reloading the same browser restores drafts where local storage is available. Export each student's JSON before clearing a shared device. Run `node studio-checks.cjs` for the interpreter and cross-scenario checks.

@@ -103,7 +103,7 @@
       const bar=el('progress',undefined,box);bar.max=goal.target;bar.value=Math.min(goal.target,chosen.values[i]);bar.setAttribute('aria-label',term(goal.name));
     });
   }
-  const stages = {story:['Meet the mission','故事与任务'],build:['Build your plan','搭建方案'],algorithm:['Watch the algorithm','观察算法'],duel:['Play a challenge','互动对战'],reflect:['Explain your choice','解释与反思']};
+  const stages = {story:['Meet the mission','故事与任务'],build:['Build your plan','搭建方案'],code:['Code your solver','搭建求解程序'],algorithm:['Watch the algorithm','观察算法'],duel:['Play a challenge','互动对战'],reflect:['Explain your choice','解释与反思']};
   function navigate(id, page='story') {
     location.hash = id === 'home' ? 'home' : `part/${id}/${page}`;
   }
@@ -124,12 +124,13 @@
     el('h1',t('Small plans. Big adventures.','小小规划，\n开启大冒险。'),copy);
     el('p',t('A Pokémon-themed learning platform for high-school students. Learn how goal programming balances several wishes when resources are limited. No coding experience needed.','面向高中生的宝可梦主题学习平台。在资源有限的情况下，学会用目标规划兼顾多个愿望。无需编程基础，从生活中的选择开始。'),copy);
     button(t('Start with Part 01 →','从 Part 01 开始 →'),()=>navigate('fair'),copy);
+    button(t('Open the coding studio','直接进入编程工作坊'),()=>navigate('fair','code'),copy);
     const art=el('div',undefined,hero,'portal-art');
     for(const id of ['bulbasaur','pikachu','squirtle']) {const img=el('img',undefined,art);img.src=`assets/${id}.png`;img.alt=id;}
     const background=el('div',undefined,host,'portal-background');
     el('h2',t('Welcome to the campus adventure','欢迎来到校园冒险计划'),background);
     el('p',t('Pikachu and friends are preparing a school eco festival. They need a fair, a berry garden, supplies, a field survey and a card club. You are the planner: decide how to share limited money, time and materials while helping everyone reach their goals.','皮卡丘和伙伴们正在筹备校园环保节：办市集、种树果、准备补给、调查自然，还有卡牌社团活动。你是小队的规划员，要分配有限的钱、时间与材料，帮助伙伴们尽量实现各自的目标。'),background);
-    el('p',t('Each part is independent. Follow five short steps: story → plan → algorithm → battle → reflection. Choose one of three difficulty levels inside each part.','每个 Part 都可以独立进入。按照五个短步骤学习：听故事 → 做方案 → 看算法 → 玩对战 → 说理由。进入后可选择基础、进阶或挑战难度。'),background);
+    el('p',t('Each part is independent. Meet the mission, plan by hand, build and test your own block program, compare searches, play a challenge and explain your revision. Choose one of three difficulty levels inside each part.','每个 Part 都可以独立进入。听故事、手算方案、搭建并测试自己的积木程序，再对照算法、参加对战、解释修改。进入后可选择基础、进阶或挑战难度。'),background);
     el('h2',t('Choose your next adventure','选择你的冒险 Part'),host);
     const cards=el('div',undefined,host,'portal-parts');
     const summaries={fair:['Make recycled paper products and balance fundraising with paper reuse.','制作再生纸产品，兼顾筹款和旧纸再利用。'],garden:['Allocate garden beds to balance berry harvest and habitat.','安排种植床，兼顾树果收成与栖息地。'],center:['Pack supplies for the center and the outdoor team.','分配补给包，兼顾中心准备度与野外需求。'],field:['Plan survey rounds for useful photos and habitat coverage.','安排调查轮次，兼顾有效照片与栖息地覆盖。'],cards:['Build practice decks, then try resource-aware card battles.','配置练习牌组，再体验考虑资源限制的卡牌对战。']};
@@ -226,6 +227,8 @@
       math(hint,'\\frac{P}{40}+\\frac{R}{40}=1.25(x+2y)\\le20,\\qquad\\frac{360}{40}+\\frac{480}{40}=21');
       el('p',t('At least one unit is missing. Extra output beyond either target earns no credit. The row search finds every plan attaining this bound.','所以总缺口至少为 1，超出一项目标也不能抵消另一个缺口。用下一页的逐行定界找出所有达到 1 分的方案。'),hint);
     }
+    stageMarker('code');
+    if(stage==='code')codingStudio({host,part,level,result,t,term,el,button});
     stageMarker('algorithm');
     if(stage==='algorithm') optimizationLab({host, model, result, t, term, el, button, math, onComplete:()=>{step=80;phase=3;}});
     stageMarker('reflect');

@@ -28,7 +28,9 @@ The card battle has three playable starting conditions. The foundation state sta
 
 The visualiser enumerates every integer pair (x, y) in {0, …, 8}². It rejects hard-constraint violations, calculates nonnegative target shortfalls, divides them by the scenario's declared scales, and minimises their weighted sum. All numerical ties within 1e-9 are retained. Scales are classroom modelling choices. Changing a weight changes preferences, while changing a resource limit changes feasibility.
 
-The animation supports single steps, playback, scrubbing, replaying a specific candidate and showing the completed search. Values come from the same solver as the activities. The finite search is exact within the stated domain. It does not demonstrate the simplex method or priority-based lexicographic optimisation.
+Row bounds provide a second exact method. For each x, divide each remaining resource by its per-y use and round down. The smallest bound gives the largest feasible y. Both goal outputs increase with y, so the endpoint minimises the score on that row. In a winning row, scan backwards while the score stays tied. This reasoning depends on nonnegative yields, weights and resource costs.
+
+The chart plots feasible candidate scores and the running minimum. Use Previous, Next, Play, Pause or Finish. Foundation includes a paper-and-pencil proof for the fair and a guided AND/OR debugging check. LaTeX is rendered offline with bundled KaTeX.
 
 ## Languages and scope
 
@@ -38,7 +40,7 @@ All coefficients are fictional classroom assumptions. The card drill is a fixed 
 
 ## Validation
 
-The 15 settings were checked for 81 candidates and at least one optimum. Battle action sequences were enumerated to verify a winning line for all three starting states and the unavoidable Water shortfall in the challenge state. Browser checks cover Chinese switching, replay of a candidate and the three tied Eco Fair optima with score 1. These are software checks, not evidence of classroom learning gains.
+The 15 settings were checked for 81 candidates and at least one optimum. Battle action sequences were enumerated to verify a winning line for all three starting states and the unavoidable Water shortfall in the challenge state. Browser checks cover Chinese switching, step-by-step tracing and the three tied Eco Fair optima with score 1. These are software checks, not evidence of classroom learning gains.
 
 ## License and assets
 

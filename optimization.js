@@ -72,5 +72,14 @@ function optimizationLab({host, model, result, t, term, el, button, math, onComp
       if(bounded())el('p',t('In each winning row, move left from its endpoint while the score stays equal. This includes ties inside a row.','在每个获胜行，从行末逐个减小 y，直到分数变大。这样也能找到行内的并列方案。'),working);
     }
   }
+  const debug=el('details',undefined,lab,'story-intro');
+  el('summary',t('Debug a decision','调试一个判断'),debug);
+  const mixed=result.candidates.find(v=>!v.feasible && v.resources.some((u,i)=>u<=result.limits[i]));
+  if(mixed){
+    el('p',t('This plan passes some checks and fails others. Which operator should connect the checks?','这个方案通过了部分检查，却超出另一项限制。应该用哪个运算连接这些检查？')+' ('+mixed.x+', '+mixed.y+')',debug);
+    el('p',model.resources.map((r,i)=>term(r.name)+' '+mixed.resources[i]+' / '+result.limits[i]).join(' · '),debug);
+    const feedback=el('p','',debug);feedback.setAttribute('aria-live','polite');
+    for(const op of ['AND','OR'])button(op,()=>{feedback.textContent=op==='AND'?t('Correct. Every hard limit must hold. This plan is rejected.','正确。每一项硬约束都必须满足，因此淘汰这个方案。'):t('OR accepts a plan as soon as one check passes. Look at the limit it breaks and try again.','OR 只要一项合格就放行。看看这个方案超出了哪项上限，再试一次。');},debug);
+  }
   stop();draw();
 }

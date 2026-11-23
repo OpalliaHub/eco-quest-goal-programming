@@ -215,6 +215,17 @@
     for (let i=0;i<plan[0]+plan[1];i++) el('span', (i<plan[0] ? QuestStories[part].icons[0]+' x' : QuestStories[part].icons[1]+' y'), tokens);
     button(t('Check my plan','检查我的方案'), () => { prediction = plan.join(', '); submitted = true; render(); }, actions);
     if (submitted) el('p', (Math.abs(chosen.score-result.bestScore)<1e-9 ? t('Optimal! Explain the remaining shortfalls and any tied plans.','达到最优！请解释剩余偏差及并列最优方案。') : t('Feasible, but a lower score is possible. Use the walkthrough to find a better plan.','方案可行，但存在更低分数。使用下方演示寻找更好的方案。')), host, 'learn-feedback');
+    if(part==='fair' && level===0){
+      const hint=el('details',undefined,host,'story-intro');
+      el('summary',t('Try this by hand: can you beat one point?','纸笔挑战：有没有比 1 分更好的方案？'),hint);
+      el('p',t('Fix two bookmark batches. They use two of sixteen hours. Fourteen hours remain, and each notebook batch needs two. Try seven notebook batches.','先做两批书签，占去 16 小时中的 2 小时。还剩 14 小时，每批笔记本要 2 小时，试做 7 批。'),hint);
+      math(hint,'2+2\\cdot7=16,\\quad20\\cdot2+30\\cdot7=250\\le260');
+      el('p',t('Nine batches fit ten spaces. They reuse 460 sheets from the stock of 600. The two outputs are 340 dollars and 460 sheets.','共 9 批，放得进 10 个位置，用纸 460 张也在 600 张库存内。两个成果是筹得 340 港元、利用 460 张纸。'),hint);
+      math(hint,'Z=\\frac{360-340}{40}+\\frac{480-460}{40}=1');
+      el('p',t('To prove this is best, count output in scoring units. Either product earns 1.25 combined output units per hour. Sixteen hours can produce at most 20 units. The two targets ask for 21.','要证明这已经最好，可以把两种成果先分别换成计分单位。每批书签一小时获得 1.25 单位，两小时做一批笔记本获得 2.5 单位。因此每小时都只得到 1.25 单位。16 小时最多得到 20 单位，而目标需要 21 单位。'),hint);
+      math(hint,'\\frac{P}{40}+\\frac{R}{40}=1.25(x+2y)\\le20,\\qquad\\frac{360}{40}+\\frac{480}{40}=21');
+      el('p',t('At least one unit is missing. Extra output beyond either target earns no credit. The row search finds every plan attaining this bound.','所以总缺口至少为 1，超出一项目标也不能抵消另一个缺口。用下一页的逐行定界找出所有达到 1 分的方案。'),hint);
+    }
     stageMarker('algorithm');
     if(stage==='algorithm') optimizationLab({host, model, result, t, term, el, button, math, onComplete:()=>{step=80;phase=3;}});
     stageMarker('reflect');

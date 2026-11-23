@@ -12,39 +12,11 @@ function fullCodingStudio({host,part,level,result,t,term,el,button}){
   function save(){try{localStorage.setItem(key,JSON.stringify(data));}catch(_){}}
   el('h3',lang([['Repair the missing resource check','修复漏掉的资源检查'],['Debug the priority rule','调试目标优先级'],['Build the search from scratch','从空白搭建搜索程序']][level]),section);
   el('p',lang([['Run the starter. It scores a plan that breaks a limit. Inspect the failing pair, insert a check inside the loop, then run it again.','先运行起始程序。它给一个超限方案也打了分。查看失败的数对，在循环内插入检查，再运行。'],['Goal 1 now counts three times. Use a failing score to locate the faulty assignment. Check the same program on equal weights to expose lost ties.','目标一的权重变成了 3。用一个错误分数定位赋值错误，再用相同权重测试是否漏掉并列解。'],['Start with a loop. Test the limits, set both gaps, initialise the score to zero and add one penalty per goal. Then update the winner list. Choose a test pair and predict its output before running.','先放循环，检查资源并设置缺口。每个方案的分数从零开始，把两个目标的罚分逐项加入，再更新获胜名单。自己选一对数量做测试，先预测输出再运行。']][level]),section);
-  const workspace=el('div',undefined,section,'block-columns');
-  const palette=el('div',undefined,workspace,'block-panel');
-  el('h4',t('Block library','积木盒'),palette);
-  el('small',t('Click to insert at the chosen line.','点击积木，插入所选位置。'),palette);
-  const programPanel=el('div',undefined,workspace,'block-panel');
-  el('h4',t('My program','我的程序'),programPanel);
-  const list=el('ol',undefined,programPanel,'program-lines');
-  const insertion=el('label',t('Insert at ','插入位置 '),programPanel);
-  const position=el('select',undefined,insertion);
-  const status=el('p','',programPanel);status.setAttribute('role','status');
-  let selected=level===0?1:data.program.length;
-  const edit=(message)=>{save();draw();output.replaceChildren();status.textContent=message;};
-  function draw(){
-    list.replaceChildren();position.replaceChildren();selected=Math.min(selected,data.program.length);
-    for(let i=0;i<=data.program.length;i++){const option=el('option',i===data.program.length?t('End','末尾'):t('Before line ','在第几行之前：')+(i+1),position);option.value=i;}
-    position.value=selected;
-    data.program.forEach((op,i)=>{
-      const li=el('li',undefined,list);const text=el('span',label(op),li);text.className='block-text';
-      const tools=el('span',undefined,li,'block-tools');
-      function change(delta){[data.program[i],data.program[i+delta]]=[data.program[i+delta],data.program[i]];selected=i+delta;edit(t('Program changed. Run to test.','程序已修改，运行看看。'));}
-      for(const [name,fn,disabled,hint] of [['↑',()=>change(-1),!i,t('Move up','上移')],['↓',()=>change(1),i===data.program.length-1,t('Move down','下移')],['×',()=>{data.program.splice(i,1);selected=i;edit(t('Block removed.','积木已移除。'));},false,t('Remove','移除')]]){
-        const b=button(name,fn,tools,disabled);b.setAttribute('aria-label',hint+' '+(i+1));
-      }
-    });
-    if(!data.program.length)el('li',t('Choose a loop to start.','选择循环积木开始。'),list);
-  }
-  position.onchange=()=>{selected=Number(position.value);};
-  const groups=[['loop','shortLoop'],['guard','loose'],['gaps','raw'],...(level===2?[['zero','add1','add2']]:[['weighted','equal']]),['keep','first']];
-  for(const group of groups){
-    const family=el('div',undefined,palette,'block-family');
-    for(const op of group)button(label(op),()=>{if(data.program.length>=14){status.textContent=t('Remove a block before adding another.','请先移除一个积木。');return;}
-      data.program.splice(selected,0,op);selected++;edit(t('Block inserted. Run to test.','已插入积木，运行看看。'));},family);
-  }
+  const editor=flowEditor({section,level,t,el,button,label,data,onEdit:()=>{
+    save();
+    output.replaceChildren();
+  }});
+  const status=editor.status;
   const testBox=el('fieldset',undefined,section);el('legend',t('My test case','我设计的测试'),testBox);
   el('p',t('Pick two counts. Predict whether the program should skip the pair or give it a score.','选两个数量，预测正确的程序应当跳过这个方案，还是给它打分。'),testBox);
   const productZH={fair:['书签批次','笔记本批次'],garden:['橙橙果种植床','桃桃果种植床'],center:['舒适补给包','野外补给包'],field:['河岸调查轮次','林地调查轮次'],cards:['入门牌组','战术牌组']};
@@ -82,18 +54,44 @@ function fullCodingStudio({host,part,level,result,t,term,el,button}){
       const ref=result.candidates.find(p=>p.x===pair[0]&&p.y===pair[1]);
       el('p',result.model.resources.map((r,j)=>term(r.name)+' '+ref.resources[j]+'/'+result.limits[j]).join(' · '),trace);
       el('p',t('Expected','正确结果')+' '+(ref.feasible?'Z = '+Number(ref.score.toFixed(4)):t('Skip','跳过'))+' · '+t('Your output','实际输出')+' '+describe(state),trace);
-      for(const s of state?.steps||[])el('div',s.line+'. '+label(s.op)+' → '+(s.skipped?t('skip','跳过'):s.op==='guard'||s.op==='loose'?t('continue','继续'):s.op==='gaps'||s.op==='raw'?'['+s.gaps.join(', ')+']':s.op==='keep'||s.op==='first'?t('best ','最低 ')+Number(s.best.toFixed(4)):'Z = '+Number(s.score.toFixed(4))),trace);
+      if(!state)return;
+      const steps=state.steps;
+      const reader=el('div',undefined,trace,'flow-reader');
+      const panel=el('div',undefined,reader,'flow-snapshot');
+      panel.setAttribute('aria-live','polite');
+      const controls=el('div',undefined,reader,'flow-toolbar');
+      let cursor=0;
+      const prev=button(t('← Previous instruction','← 上一条指令'),()=>{cursor--;show();},controls);
+      const next=button(t('Next instruction →','下一条指令 →'),()=>{cursor++;show();},controls);
+      function show(){
+        panel.replaceChildren();
+        const step=steps[cursor-1], op=step?.op||data.program[0], line=step?.line||1;
+        el('strong',t('Line ','第 ')+line+' · '+t(...flowFamily[op].name),panel);
+        el('p',label(op),panel);
+        let value=t('Try this pair','取出这个方案')+' ('+pair+')';
+        if(step){
+          if(step.skipped)value=t('Stop here. Skip this plan before scoring.','在这里停下，跳过这个方案。');
+          else if(op==='guard'||op==='loose')value=t('Continue to the next line.','继续执行下一行。');
+          else if(op==='gaps'||op==='raw')value=t('Two gaps','两个缺口')+' = ['+step.gaps.join(', ')+']';
+          else if(op==='keep'||op==='first')value=t('Lowest score so far','目前最低分')+' = '+Number(step.best.toFixed(4));
+          else value='Z = '+Number(step.score.toFixed(4));
+        }
+        el('p',value,panel);
+        prev.disabled=cursor===0;
+        next.disabled=cursor===steps.length;
+        for(const row of section.querySelectorAll('.flow-row'))row.classList.toggle('flow-current',Number(row.dataset.line)===line);
+      }
+      show();
     }
     inspect(data.pair);
     for(const c of checks){const line=el('div',undefined,output,'check-row');el('span',(c.ok?'✓ ':'✗ ')+messages[c.id],line);if(c.pair)button(t('Inspect ','查看 ')+ '('+c.pair+')',()=>inspect(c.pair),line);}
     el('p',(transferCheck?'✓ ':'✗ ')+t('Transfer test: same blocks on the equal-weight fair (three ties)','迁移测试：相同积木运行等权市集（三个并列解）'),output);
   }
   button(t('Run my blocks','运行我的积木'),run,controls);
-  button(t('Restore starter','恢复起始程序'),()=>{if(confirm(t('Replace the current blocks? Previous test runs will remain.','替换当前积木？将保留测试历史。'))){data.program=[...BlockEngine.starters[level]];selected=Math.min(1,data.program.length);edit(t('Starter restored.','已恢复起始程序。'));}},controls);
+  button(t('Restore starter','恢复起始程序'),()=>{if(confirm(t('Replace the current blocks? Previous test runs will remain.','替换当前积木？将保留测试历史。'))){data.program=[...BlockEngine.starters[level]];save();editor.reset();output.replaceChildren();status.textContent=t('Starter restored.','已恢复起始程序。');}},controls);
   const l=el('label',t('Which test made you change a block, and why?','哪个测试让你修改积木？为什么？'),section);
   const reflection=el('textarea',undefined,l);reflection.value=data.explanation;reflection.oninput=()=>{data.explanation=reflection.value;save();};
   button(t('Export my program and run history','导出我的程序和运行记录'),()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({part,level:level+1,limits:result.limits,weights:result.weights,...data},null,2)],{type:'application/json'}));const a=document.createElement('a');a.download='ecoquest-code-'+part+'-'+(level+1)+'.json';a.href=url;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);},section);
-  draw();
 }
 
 // The first lesson exposes one editable instruction. Both runs use the same
@@ -116,7 +114,7 @@ function codingStudio(context) {
     if(id)code.splice(1,0,id);
     const row=BlockEngine.execute(code,result.model,result.limits,result.weights).cases[[p.x,p.y]];
     const output=row.skipped?'skip':score(row.score);
-    session.attempts.push({program:code,input:[p.x,p.y],prediction:p===sample?session.prediction:null,output});
+    session.attempts.push({program:code,input:[p.x,p.y],prediction:p===sample?session.prediction:null,output,visited:[1,...row.steps.map(step=>step.line)]});
     return output;
   };
   const outcome=v=>v==='skip'?t('Skipped','跳过'):t('Scored ','得分 ')+v;
@@ -164,16 +162,35 @@ function codingStudio(context) {
       action('Fill the empty slot','去补上这一行',()=>next(2));
     }else if(session.step===2){
       heading('Put one rule before scoring','在打分前补一条规则');
-      el('p',t('Each button is a block you can insert. Pick one and see what your program does with the same plan.','下面两个按钮就是可插入的积木。选一块放进空位，程序会立即用原方案再跑一次。'),focus);
-      el('p',t('Take a plan → [insert here] → calculate its score','取一个方案 → 【在这里插入】 → 算分数'),focus,'first-line');
-      if(session.failed)el('p',t('It still gives a score. At least one limit was met, so “all limits exceeded” never triggered. Try the other rule.','还是得到了分数。因为有些资源够用，“全部超限”没有触发。试试另一条规则。')+' '+outcome(session.attempts.at(-1).output),focus,'first-result');
-      for(const [op,en,zh] of [['loose','Skip if every limit is exceeded','全部资源都超限才跳过'],['guard','Skip if any limit is exceeded','有一项资源超限就跳过']])action(en,zh,()=>{
-        session.choice=op;if(run(op,sample)==='skip'){next(3);}else{session.failed=true;render();}
-      });
+      el('p',t('Drag a rule into the dotted space. The computer will try your instruction on the same plan. You can also click a rule.','把一条规则拖进虚线空位，电脑会用同一个方案试跑。也可以直接点规则。'),focus);
+      const board=el('div',undefined,focus,'guided-flow');
+      const dragger=flowDrag(board,applyRule);
+      const rack=el('div',undefined,board,'guided-rack');
+      const rules=[['loose','Skip if every limit is exceeded','全部资源都超限才跳过'],['guard','Skip if any limit is exceeded','有一项资源超限就跳过']];
+      for(const [op,en,zh] of rules){
+        const tile=button(t(en,zh),()=>applyRule(op),rack);
+        tile.className='flow-tile';
+        tile.dataset.op=op;
+        dragger.source(tile,op);
+      }
+      const lane=el('div',undefined,board,'guided-lane');
+      el('span',t('Take a plan','取一个方案'),lane,'guided-node');
+      const slot=el('div',session.failed?t('Every limit exceeded? Skip.','全部资源都超限才跳过'):t('Drop a rule here','把规则拖到这里'),lane,'guided-slot');
+      dragger.slot(slot,1);
+      el('span',t('Score its gaps','给缺口打分'),lane,'guided-node');
+      function applyRule(op){
+        session.choice=op;
+        if(run(op,sample)==='skip'){next(3);}
+        else{session.failed=true;render();}
+      }
+      if(session.failed)el('p',t('That rule let this plan through. Some resources fit, so “every limit” was false. Try the other rule.','这条规则放行了超限方案。有些资源够用，所以“全部都超限”不成立。请换一块再试。')+' '+outcome(session.attempts.at(-1).output),focus,'first-result');
     }else{
       heading('Does the repair keep a legal plan?','修好之后，合规方案还能留下吗？');
       el('p',displayPair(sample)+' → '+outcome('skip'),focus,'first-result');
-      el('p',t('Take a plan → if any limit is exceeded, skip → otherwise score','取一个方案 → 有一项资源超限就跳过 → 否则继续打分'),focus,'first-line');
+      const path=el('div',undefined,focus,'guided-lane');
+      el('span',t('Take a plan','取一个方案'),path,'guided-node');
+      el('strong',t('Any limit exceeded? Skip.','有一项超限就跳过'),path,'guided-slot fitted');
+      el('span',t('Otherwise score','否则打分'),path,'guided-node');
       el('p',t('Your new instruction stops this plan before scoring. Next, try ','你补上的指令让超限方案在打分前停下。现在换成：')+displayPair(control),focus);
       resourceList(control);
       const second=session.attempts.find(a=>a.input[0]===control.x&&a.input[1]===control.y);
@@ -181,6 +198,10 @@ function codingStudio(context) {
       else{
         el('p',displayPair(control)+' → '+outcome(second.output),focus,'first-result');
         el('p',t('This score measures remaining gaps in the two goals. Smaller is better. Only plans that fit every limit can compete.','分数衡量两个目标还有多少缺口，越小越好。只有各项资源都够用的方案才有资格比较。'),focus);
+        const lines=el('details',undefined,focus);
+        el('summary',t('Which lines actually ran?','这两组方案分别走了哪几行？'),lines);
+        const rejected=session.attempts.find(a=>a.output==='skip');
+        for(const a of [rejected,second])el('p','('+a.input.join(', ')+') · '+a.visited.join(' → ')+' · '+outcome(a.output),lines);
         el('p',t('Explain to your partner: which line stopped the first plan? Why did the second plan reach scoring?','请向同桌解释：第一组在哪一行停下？第二组为什么能继续打分？'),focus);
         action('Save my test record','保存本次测试记录',()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({part,level:level+1,lesson:'one-block',attempts:session.attempts},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='one-block-'+part+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
         action('Try again from the start','从头再做一遍',()=>{session=initial();session.full=false;guidedSessions.set(key,session);render();});

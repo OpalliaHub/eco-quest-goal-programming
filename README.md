@@ -6,13 +6,25 @@ An interactive goal-programming classroom project for high-school learners, deve
 
 Try the [English campus fair coding lesson](http://120.77.58.145/eco-quest/?lang=en#part/fair/code). The seven-minute presentation includes a live block repair and a hand calculation. Use the [PowerPoint presentation](classroom/eco-quest-presentation.pptx) or the [projector PDF](classroom/eco-quest-presentation.pdf).
 
-## Run locally
+## Run the Python classroom
+
+From the project directory, with Python 3 and its standard SQLite module available:
 
 ```sh
-python3 -m http.server 8000
+python3 kernel/server.py --classroom
 ```
 
-Open http://localhost:8000. The site uses plain HTML, CSS and JavaScript, with no package installation or backend. It also works under a subdirectory on a static web server.
+Open [the fair reference lesson on this computer](http://127.0.0.1:8766/?lang=en#part/fair/algorithm/2/7). The local server supplies the lesson, its API and the chart. Opening `index.html` directly runs the offline browser version, including the editable block program.
+
+| Component | Classroom use |
+| --- | --- |
+| JavaScript, `studio-engine.js` | Executes the student's ordered blocks, including incorrect instructions. Saves predictions and test runs in the browser. |
+| Python, `kernel/lesson_model.py` | Checks resource limits and scores feasible plans with weighted shortfalls. Exhaustive search and row bounds both retain tied winners. |
+| Python, `kernel/chart.py` | Draws an SVG from the chosen search trace. The line records the lowest eligible score reached by that step. |
+| SQL, `kernel/score_distribution.sql` | Groups feasible plans by score in a temporary SQLite database. At the equal-weight fair, the minimum group contains three of 57 feasible plans. |
+| HTTP, JSON and SVG | Carry the reference calculations and chart to the bilingual lesson. Student-authored programs run separately from the reference. |
+
+Inspect the worked responses [for the 17-hour plan](http://127.0.0.1:8766/api/step?part=fair&level=0&x=1&y=8) and [for the 16-hour plan](http://127.0.0.1:8766/api/step?part=fair&level=0&x=2&y=7). To see the implementation, open the [Python model](kernel/lesson_model.py) and [SQL grouping query](kernel/score_distribution.sql). Run the kernel tests from this directory with `python3 -m unittest discover -s kernel`. Node.js enables the cross-language tests against the offline reference.
 
 ## Learning activities
 

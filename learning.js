@@ -164,13 +164,21 @@
     if(index<keys.length-1) button(t('Next: ','下一步：')+t(...stages[keys[index+1]]),()=>navigate(part,keys[index+1]),nav);
     else button(t('Choose another part →','选择其他 Part →'),()=>navigate('home'),nav);
   }
+  let closeAlgorithm;
   function render() {
+    closeAlgorithm?.();
+    closeAlgorithm=undefined;
     host.replaceChildren();
     const header = el('div', undefined, host, 'learn-controls');
     el('h2', t('Goal Programming Academy', '目标规划训练学院'), header);
     button(language === 'en' ? '中文' : 'English', () => {
       language = language === 'en' ? 'zh' : 'en';
       try { localStorage.setItem('ecoquest-language', language); } catch (_) {}
+      const url=new URL(location.href);
+      if(url.searchParams.has('lang')){
+        url.searchParams.set('lang',language);
+        try{history.replaceState(history.state,'',url);}catch(_){}
+      }
       render();
     }, header);
     host.lang = language === 'zh' ? 'zh-CN' : 'en';
@@ -239,7 +247,11 @@
     stageMarker('code');
     if(stage==='code')codingStudio({host,part,level,result,t,term,unit,math,products:products[part],el,button});
     stageMarker('algorithm');
-    if(stage==='algorithm') optimizationLab({host, model, result, t, term, el, button, math, onComplete:()=>{step=80;phase=3;}});
+    if(stage==='algorithm'){
+      const pair=location.hash.split('/').slice(3);
+      const initialPair=pair.length===2 && pair.every(n=>/^[0-8]$/.test(n)) ? pair.map(Number) : null;
+      closeAlgorithm=optimizationLab({host,part,level,initialPair,model,result,t,term,unit,el,button,math,onComplete:()=>{step=80;phase=3;}});
+    }
     stageMarker('reflect');
     const reflectionLabel=el('label',t('Explain your decision, the weights and a modelling limitation','解释你的决策、目标权重和一项模型局限'),host);
     const notes=el('textarea',undefined,reflectionLabel);notes.value=reflection;notes.oninput=()=>{reflection=notes.value;};

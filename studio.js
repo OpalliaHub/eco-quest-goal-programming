@@ -205,6 +205,8 @@ function codingStudio(context) {
         const rejected=session.attempts.find(a=>a.output==='skip');
         for(const a of [rejected,second])el('p','('+a.input.join(', ')+') · '+a.visited.join(' → ')+' · '+outcome(a.output),lines);
         el('p',t('Explain to your partner: which line stopped the first plan? Why did the second plan reach scoring?','请向同桌解释：第一组在哪一行停下？第二组为什么能继续打分？'),focus);
+        const compare=el('a',t('Trace this pair in the reference search →','跟随参考算法查看这一组 →'),focus,'first-cover-link');
+        compare.href='#part/'+part+'/algorithm/'+control.x+'/'+control.y;
         action('Save my test record','保存本次测试记录',()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({part,level:level+1,lesson:'one-block',attempts:session.attempts},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='one-block-'+part+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
         action('Try again from the start','从头再做一遍',()=>{session=initial();session.full=false;guidedSessions.set(key,session);render();});
       }

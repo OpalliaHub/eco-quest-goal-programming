@@ -1,85 +1,235 @@
-function optimizationLab({host, model, result, t, term, el, button, math, onComplete}) {
+// Both engines expose the same classroom trace. The browser model is also usable
+// when the site is opened from a file or the Python service is unavailable.
+function optimizationLab({host, part, level, initialPair, model, result, t, term, unit, el, button, math, onComplete}) {
   const lab = el('section', undefined, host, 'opt-lab');
-  const answer = searchRows(model, result.limits, result.weights, QuestModels.evaluate);
+  const online = location.protocol === 'https:' || location.protocol === 'http:';
   const controls = el('div', undefined, lab, 'learn-controls');
-  const method = el('select', undefined, controls);
-  method.setAttribute('aria-label', t('Search method','搜索方法'));
-  for (const label of [t('Row bounds · hand method','逐行定界 · 手算方法'), t('Full enumeration','逐一枚举')]) el('option',label,method);
-  const note = el('p',undefined,lab);
-  const display = el('div',undefined,lab,'opt-display');
-  const board = el('div',undefined,display);
-  const chart = el('div',undefined,display);
-  const steps = el('div',undefined,lab,'learn-controls');
-  const back = button(t('Previous step','上一步'),()=>move(index-1),steps);
-  const play = button('',()=>clock ? stop() : start(),steps);
-  const next = button(t('Next step','下一步'),()=>move(index+1),steps);
-  button(t('Finish','看最终结果'),()=>move(frames().length-1),steps);
-  const working = el('div',undefined,lab,'opt-work');
-  let index=0, clock=null;
-  const bounded=()=>method.selectedIndex===0;
-  const frames=()=>bounded()?answer.rows.map(row=>row.point):result.candidates;
-  function stop(){clearInterval(clock);clock=null;play.textContent=t('Play','播放');}
-  function start(){
-    if(index===frames().length-1) index=0;
-    play.textContent=t('Pause','暂停'); draw();
-    clock=setInterval(()=>{if(!lab.isConnected){stop();return;}index++;draw();},650);
-  }
-  function move(i){stop();index=i;draw();}
-  method.onchange=()=>move(0);
-  function draw(){
-    const list=frames(), p=list[index], seen=list.slice(0,index+1);
+  const methodLabel = el('label', t('Search method ', '搜索方法 '), controls);
+  const method = el('select', undefined, methodLabel);
+  for (const [value, label] of [
+    ['rows', t('Row bounds · hand method', '逐行定界 · 手算方法')],
+    ['enumeration', t('Full enumeration', '逐一枚举')]
+  ]) el('option', label, method).value = value;
+  const status = el('p', '', lab, 'opt-engine');
+  status.setAttribute('role', 'status');
+  const note = el('p', '', lab);
+  const display = el('div', undefined, lab, 'opt-display');
+  const board = el('div', undefined, display);
+  const chart = el('div', undefined, display, 'opt-chart');
+  const steps = el('div', undefined, lab, 'learn-controls');
+  const back = button(t('Previous step','上一步'), () => move(index-1), steps);
+  const play = button('', () => timer ? stop() : start(), steps);
+  const next = button(t('Next step','下一步'), () => move(index+1), steps);
+  button(t('Finish','看最终结果'), () => move(trace.length-1), steps);
+  const inspect = el('details', undefined, lab, 'opt-inspect');
+  el('summary', t('Test a particular plan', '检验你选的方案'), inspect);
+  const picks = el('div', undefined, inspect, 'learn-controls');
+  const quantities = ['x','y'].map((name,i) => {
+    const field = el('label', name+' ', picks);
+    const select = el('select', undefined, field);
+    for (let n=0;n<=8;n++) el('option', String(n), select);
+    select.value=initialPair?.[i] ?? (part==='fair' ? [2,7][i] : 0);
+    return select;
+  });
+  button(t('Find this pair in the search','在搜索中查看这一组'), () => {
+    const target=9*Number(quantities[0].value)+Number(quantities[1].value);
+    if (method.value==='enumeration') move(target);
+    else { method.value='enumeration'; loadMethod(target); }
+  }, picks);
+  const working = el('div', undefined, lab, 'opt-work');
+  const mathBox = el('div', undefined, working, 'opt-calculation');
+  const summary = el('div', undefined, working, 'opt-answer');
+  const code = el('details', undefined, lab, 'opt-code');
+  el('summary', t('Read the Python behind this calculation','看这一步背后的 Python'), code);
+  el('p', t('The search tries a pair of quantities, checks supplies, and scores the remaining goal gaps only when the plan fits.', '程序取出一组数量，先查资源是否够用，再给可行方案的两个目标缺口打分。'), code);
+  const snippet=el('pre',undefined,code); snippet.hidden=true;
+  const sourceLink=el('a',t('Open the complete Python model','打开完整 Python 模型源码'),code);
+  sourceLink.href='kernel/lesson_model.py'; sourceLink.target='_blank';sourceLink.rel='noopener';
+  let sourceRead=false;
+  code.addEventListener('toggle',async()=>{
+    if(!code.open||sourceRead||!online)return;
+    sourceRead=true;
+    try{
+      const response=await get('api/source.py','text');
+      const lines=response.split('\n');
+      const first=lines.findIndex(line=>line.startsWith('def goal_penalty('));
+      if(first<0 || !lab.isConnected)return;
+      let end=first+1;
+      while(end<lines.length && (lines[end].startsWith(' ') || !lines[end].trim()))end++;
+      snippet.textContent=lines.slice(first,end).join('\n').trimEnd();
+      snippet.hidden=false;
+    }catch{sourceRead=false;}
+  });
+
+  const cache=new Map(), details=new Map(), localTraces=new Map();
+  const life=new AbortController();
+  let index=0, timer, revision=0, frameRevision=0, engine='browser', trace=[], answer;
+  const fmt=n=>Number.isFinite(n) ? +n.toFixed(3) : '—';
+  const query=(path,extra)=>'api/'+path+'?'+new URLSearchParams({part,level,...extra});
+  function localSolution(name) {
+    if(localTraces.has(name))return localTraces.get(name);
+    const rows=name==='rows' ? searchRows(model,result.limits,result.weights,QuestModels.evaluate) : null;
     let best=Infinity;
-    const history=seen.map(item=>{if(item?.feasible) best=Math.min(best,item.score);return best;});
-    if(index===list.length-1){stop();onComplete();}
-    back.disabled=index===0;next.disabled=index===list.length-1;
-    note.textContent=bounded()?t('Fix x. The resources give the largest y you can afford. Both outputs increase with y, so this endpoint gives the lowest score in its row.','先固定 x，用每项剩余资源算出还能放多少个 y，取最小上限。增加 y 会提高两项目标的完成量，因此行末一定取得本行最低分。'):t('Visit every pair. Only feasible pairs can improve the best score.','依次检查每对数量。只有满足所有限制的方案才可能刷新最低分。');
-    board.replaceChildren();chart.replaceChildren();working.replaceChildren();
-    el('strong',t('Step ','步骤 ')+(index+1)+' / '+list.length,board);
-    el('p',t('Current plan','当前方案')+'  '+(p?'('+p.x+', '+p.y+')':t('No feasible y','本行无可行 y')),board);
-    el('p',t('Current score','当前分数')+'  '+(p?.feasible?Number(p.score.toFixed(3)):'—'),board);
-    el('strong',t('Lowest so far','目前最低分')+'  '+Number(best.toFixed(3)),board);
-    const ns='http://www.w3.org/2000/svg', svg=document.createElementNS(ns,'svg');
+    const candidates=rows ? rows.rows.map(row=>row.point) : result.candidates;
+    const frames=candidates.map((candidate,i)=>{
+      if(candidate?.feasible)best=Math.min(best,candidate.score);
+      return {step:i+1, x:rows?rows.rows[i].x:candidate.x, y:candidate?.y??null, feasible:!!candidate?.feasible,
+        score:candidate?.feasible?candidate.score:null, bestSoFar:Number.isFinite(best)?best:null, bounds:rows?.rows[i].bounds};
+    });
+    const value={method:name,limits:result.limits,weights:result.weights,bestScore:result.bestScore,
+      feasibleCount:result.feasible.length,winners:result.winners.map(p=>[p.x,p.y]),trace:frames};
+    localTraces.set(name,value);
+    return value;
+  }
+  function localDetail(x,y) {
+    const p=result.candidates.find(p=>p.x===x&&p.y===y);
+    return {x,y,feasible:p.feasible,score:p.feasible?p.score:null,
+      resources:model.resources.map((r,j)=>({...r,used:p.resources[j],limit:result.limits[j],ok:p.resources[j]<=result.limits[j]})),
+      goals:p.feasible?model.goals.map((g,j)=>({...g,coefX:g.x,coefY:g.y,value:p.values[j],gap:p.shortfalls[j],weight:result.weights[j]})):[]};
+  }
+  async function get(url,kind='json') {
+    const request=new AbortController();
+    const abort=()=>request.abort();
+    if(life.signal.aborted)throw Error('View closed');
+    life.signal.addEventListener('abort',abort,{once:true});
+    const timeout=setTimeout(abort,4500);
+    try {
+      const res=await fetch(url,{signal:request.signal,cache:'no-cache'});
+      if(!res.ok)throw Error('Service unavailable');
+      return kind==='text'? await res.text():await res.json();
+    } finally {clearTimeout(timeout);life.signal.removeEventListener('abort',abort);}
+  }
+  function alive(token){return token===revision && lab.isConnected;}
+  function useLocal(){
+    engine='browser';
+    status.textContent=online?t('Browser calculation · Python service unavailable','浏览器计算 · 暂时无法连接 Python 服务'):t('Offline · calculated in this browser','离线 · 由浏览器计算');
+    status.dataset.engine='browser';
+    answer=localSolution(method.value);trace=answer.trace;draw();
+  }
+  async function loadMethod(start=0){
+    stop();
+    const token=++revision, name=method.value;
+    index=start;engine='browser';answer=localSolution(name);trace=answer.trace;
+    if(!online){useLocal();return;}
+    status.dataset.engine='loading';
+    status.textContent=t('Connecting to Python · browser preview','正在连接 Python · 先显示浏览器预览');
+    draw();
+    try {
+      let payload=cache.get(name);
+      if(!payload){
+        payload=await get(query('solve',{method:name}));
+        if(payload.part!==part || payload.level!==level || payload.method!==name ||
+           payload.trace?.length!==(name==='rows'?9:81) || !Array.isArray(payload.winners))throw Error('Unexpected model response');
+        cache.set(name,payload);
+      }
+      if(!alive(token))return;
+      engine='python';status.dataset.engine='python';status.textContent=t('Python · live model','Python · 实时模型');
+      answer=payload;trace=answer.trace;draw();
+    }catch{if(alive(token))useLocal();}
+  }
+  function stop(){clearInterval(timer);timer=null;play.textContent=t('Play','播放');}
+  function start(){
+    if(index===trace.length-1)index=0;
+    play.textContent=t('Pause','暂停');draw();
+    timer=setInterval(()=>{if(!lab.isConnected){stop();return;}move(index+1,false);},750);
+  }
+  function move(i,pause=true){if(pause)stop();index=Math.max(0,Math.min(trace.length-1,i));draw();}
+  method.onchange=()=>loadMethod();
+
+  function browserChart(){
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
     svg.setAttribute('viewBox','0 0 460 155');svg.setAttribute('role','img');
-    svg.setAttribute('aria-label',t('Score by step','分数随步骤变化'));chart.append(svg);
-    function shape(tag,props,label){const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(props)) n.setAttribute(k,v);n.textContent=label||'';svg.append(n);}
-    const high=Math.max(...list.filter(p=>p?.feasible).map(p=>p.score)), X=i=>37+401*i/(list.length-1), Y=v=>122-104*v/(high||1);
-    shape('path',{d:'M37 15V122H442',fill:'none',stroke:'#718982'});
-    for(const v of [0,high])shape('text',{x:4,y:Y(v)+4,'font-size':12},String(v));
-    shape('text',{x:37,y:145,'font-size':12},'1');
-    shape('text',{x:414,y:145,'font-size':12},String(list.length));
-    shape('text',{x:209,y:145,'font-size':12},t('Step','步骤'));
-    const pts=history.map((v,i)=>X(i)+','+Y(v)).join(' ');
-    shape('polyline',{points:pts,fill:'none',stroke:'#087269','stroke-width':3});
-    seen.forEach((v,i)=>{if(v?.feasible)shape('circle',{cx:X(i),cy:Y(v.score),r:3,fill:'#a75018'});});
-    el('small',t('Orange dots: feasible scores. Green line: lowest score so far.','橙点表示可行方案的分数，绿线表示截至该步的最低分。'),chart);
-    if(bounded()){
-      const row=answer.rows[index];
-      if(row.point){
-        el('p',t('After setting aside resources for x = ','先为 x = ')+row.x+t(', the maximum y allowed by each limit is shown below. Round down because you need whole batches.',' 预留资源。各项资源还能支持的 y 数量如下，只能取整数，所以小数向下取整。'),working);
-        el('p',model.resources.map((r,j)=>term(r.name)+' '+row.bounds[j]).join(' · '),working);
-        const caps=model.resources.map((r,j)=>r.y?'\\left\\lfloor\\frac{'+result.limits[j]+'-'+r.x+'\\cdot '+row.x+'}{'+r.y+'}\\right\\rfloor':'8');
-        math(working,'y_{\\max}=\\min\\left(8,'+caps.join(',')+'\\right)='+row.y);
-      }else el('p',t('Already over a resource limit at y = 0.','取 y = 0 时就已超出资源上限。'),working);
+    svg.setAttribute('aria-label',t('Feasible scores and lowest score by step','每一步的可行分数和最低分'));chart.replaceChildren(svg);
+    function shape(tag,attrs,label){
+      const node=document.createElementNS(svg.namespaceURI,tag);
+      for(const [key,val] of Object.entries(attrs))node.setAttribute(key,val);
+      if(label!==undefined)node.textContent=label;
+      svg.append(node);
     }
-    if(p?.feasible){
-      model.goals.forEach((g,j)=>{el('small',term(g.name),working);math(working,'g_{'+(j+1)+'}='+g.x+'\\cdot '+p.x+'+'+g.y+'\\cdot '+p.y+'='+p.values[j]+',\\quad d_{'+(j+1)+'}^{-}=\\max(0,'+g.target+'-'+p.values[j]+')='+p.shortfalls[j]);});
-      math(working,'Z='+model.goals.map((g,j)=>result.weights[j]+'\\cdot\\frac{'+p.shortfalls[j]+'}{'+g.scale+'}').join('+')+'='+Number(p.score.toFixed(3)));
-    }else if(p) el('p',t('Over the limit: ','超限项目：')+p.reasons.map(term).join(', '),working);
-    if(index===list.length-1){
-      const winners=bounded()?answer.winners:result.winners;
-      el('h4',t('All minimum-score plans','所有最低分方案'),working);
-      el('p',winners.map(v=>'('+v.x+', '+v.y+')').join(' · '),working);
-      if(bounded())el('p',t('In each winning row, move left from its endpoint while the score stays equal. This includes ties inside a row.','在每个获胜行，从行末逐个减小 y，直到分数变大。这样也能找到行内的并列方案。'),working);
+    const high=Math.max(1,...trace.map(p=>p.score??0)), X=i=>36+402*i/(trace.length-1), Y=n=>122-102*n/high,seen=trace.slice(0,index+1);
+    shape('path',{d:'M36 15V122H441',fill:'none',stroke:'#718982'});
+    for(const n of [0,high])shape('text',{x:4,y:Y(n)+4,'font-size':12},fmt(n));
+    shape('text',{x:35,y:145,'font-size':12},'1');shape('text',{x:415,y:145,'font-size':12},trace.length);
+    shape('text',{x:205,y:145,'font-size':12},t('Step','步骤'));
+    shape('polyline',{points:seen.map((p,i)=>p.bestSoFar==null?'':X(i)+','+Y(p.bestSoFar)).filter(Boolean).join(' '),fill:'none',stroke:'#087269','stroke-width':3});
+    seen.forEach((p,i)=>{if(p.feasible)shape('circle',{cx:X(i),cy:Y(p.score),r:3,fill:'#a75018'});});
+  }
+  function paintMath(frame,detail){
+    mathBox.replaceChildren();
+    if(method.value==='rows'){
+      if(frame.y===null){el('p',t('Even y = 0 breaks a resource limit in this row.','取 y = 0 时，这一行也已经超出资源上限。'),mathBox);return;}
+      el('p',t('Fix x at ','固定 x = ')+frame.x+t('. The remaining resources allow these whole-number upper bounds for y.','，计算各项剩余资源允许的 y 的整数上限。'),mathBox);
+      el('p',model.resources.map((r,j)=>term(r.name)+' '+frame.bounds[j]).join(' · '),mathBox);
+      const caps=model.resources.map((r,j)=>r.y?'\\left\\lfloor\\frac{'+answer.limits[j]+'-'+r.x+'\\cdot '+frame.x+'}{'+r.y+'}\\right\\rfloor':'8');
+      math(mathBox,'y_{\\max}=\\min\\left(8,'+caps.join(',')+'\\right)='+frame.y);
     }
+    if(!detail)return;
+    const used=detail.resources.map(r=>term(r.name)+' '+r.used+'/'+r.limit+' '+unit(r.unit));
+    el('p',used.join(' · '),mathBox);
+    if(!detail.feasible){
+      el('p',t('Skip before scoring. Over the limit: ','超限，跳过计分。超出上限的资源：')+detail.resources.filter(r=>!r.ok).map(r=>term(r.name)).join(', '),mathBox);
+      return;
+    }
+    detail.goals.forEach((g,j)=>{
+      el('small',term(g.name),mathBox);
+      math(mathBox,'g_{'+(j+1)+'}='+g.coefX+'\\cdot '+frame.x+'+'+g.coefY+'\\cdot '+frame.y+'='+g.value+',\\quad d_{'+(j+1)+'}^{-}=\\max(0,'+g.target+'-'+g.value+')='+g.gap);
+    });
+    math(mathBox,'Z='+detail.goals.map(g=>g.weight+'\\cdot\\frac{'+g.gap+'}{'+g.scale+'}').join('+')+'='+fmt(detail.score));
+  }
+  function draw(){
+    const token=++frameRevision,frame=trace[index], end=index===trace.length-1;
+    back.disabled=index===0;next.disabled=end;
+    if(end){stop();onComplete();}
+    note.textContent=method.value==='rows'?t('Fix x. Each resource gives an upper bound on y. Try the largest y that fits them all.','先固定 x，算出每项资源允许的 y 上限，再试同时满足这些上限的最大 y。'):t('Try every pair. A plan can compete for the lowest score only if every resource fits.','依次检查每对数量，只有满足所有限制的方案才参加最低分比较。');
+    board.replaceChildren();summary.replaceChildren();
+    el('strong',t('Step ','步骤 ')+frame.step+' / '+trace.length,board);
+    el('p',t('Current plan','当前方案')+'  '+(frame.y===null?t('No feasible y','本行无可行 y'):'('+frame.x+', '+frame.y+')'),board);
+    el('p',t('Current score','当前分数')+'  '+fmt(frame.score),board);
+    el('strong',t('Lowest so far','目前最低分')+'  '+fmt(frame.bestSoFar),board);
+    if(end){
+      el('h4',t('All minimum-score plans','所有最低分方案'),summary);
+      el('p','Z = '+fmt(answer.bestScore)+' · '+answer.winners.map(([x,y])=>'('+x+', '+y+')').join(' · '),summary);
+      if(method.value==='rows')el('p',t('For each winning row, check smaller y values until the score increases. This recovers ties within a row.','在每个获胜行，从行末逐个减小 y，直到分数变大，以找全并列方案。'),summary);
+      if(engine==='python' && Array.isArray(answer.distribution) && answer.distribution.length){
+        const counts=el('details',undefined,summary,'opt-inspect');
+        el('summary',t('How many plans share each score?','每个分数有多少个方案？'),counts);
+        el('p',t('SQLite groups feasible plans by their total penalty. Here are the three lowest distinct scores, or all scores if fewer.','SQLite 按总罚分给可行方案分组。这里显示最低的三个不同分数；不足三组时显示全部。'),counts);
+        const list=el('ul',undefined,counts);
+        for(const group of answer.distribution.slice(0,3)){
+          el('li','Z = '+fmt(group.score)+' · '+group.plans+t(group.plans===1?' plan':' plans',' 个方案'),list);
+        }
+      }
+    }
+    browserChart();
+    if(engine==='python'){
+      const img=new Image();
+      img.alt=t('Python chart of the search through step ','Python 搜索过程图，展示至第 ')+frame.step;
+      img.onload=()=>{if(token===frameRevision&&lab.isConnected)chart.replaceChildren(img);};
+      img.src=query('chart.svg',{method:method.value,step:frame.step,lang:t('en','zh')});
+    }
+    if(frame.y===null){paintMath(frame,null);return;}
+    const key=frame.x+','+frame.y;
+    if(engine!=='python'){paintMath(frame,localDetail(frame.x,frame.y));return;}
+    if(details.has(key)){paintMath(frame,details.get(key));return;}
+    mathBox.replaceChildren();
+    el('p',t('Checking this plan in Python…','Python 正在核对这一组方案…'),mathBox);
+    get(query('step',{x:frame.x,y:frame.y})).then(data=>{
+      if(data.x!==frame.x || data.y!==frame.y || data.part!==part || data.level!==level ||
+          !Array.isArray(data.resources)||!Array.isArray(data.goals))throw Error('Unexpected step response');
+      details.set(key,data);
+      if(token===frameRevision&&lab.isConnected)paintMath(frame,data);
+    }).catch(()=>{if(token===frameRevision&&lab.isConnected)useLocal();});
   }
   const debug=el('details',undefined,lab,'story-intro');
   el('summary',t('Debug a decision','调试一个判断'),debug);
-  const mixed=result.candidates.find(v=>!v.feasible && v.resources.some((u,i)=>u<=result.limits[i]));
+  const mixed=result.candidates.find(p=>!p.feasible && p.resources.some((u,i)=>u<=result.limits[i]));
   if(mixed){
-    el('p',t('This plan passes some checks and fails others. Which operator should connect the checks?','这个方案通过了部分检查，却超出另一项限制。应该用哪个运算连接这些检查？')+' ('+mixed.x+', '+mixed.y+')',debug);
+    el('p',t('This plan passes some resource checks and fails others. To accept a plan, should the passing checks be joined by AND or OR?','这个方案只有部分资源够用。要接纳一个方案，各项资源合格的条件应当用 AND 还是 OR 连接？')+' ('+mixed.x+', '+mixed.y+')',debug);
     el('p',model.resources.map((r,i)=>term(r.name)+' '+mixed.resources[i]+' / '+result.limits[i]).join(' · '),debug);
     const feedback=el('p','',debug);feedback.setAttribute('aria-live','polite');
-    for(const op of ['AND','OR'])button(op,()=>{feedback.textContent=op==='AND'?t('Correct. Every hard limit must hold. This plan is rejected.','正确。每一项硬约束都必须满足，因此淘汰这个方案。'):t('OR accepts a plan as soon as one check passes. Look at the limit it breaks and try again.','OR 只要一项合格就放行。看看这个方案超出了哪项上限，再试一次。');},debug);
+    for(const op of ['AND','OR'])button(op,()=>{feedback.textContent=op==='AND'?t('Correct. Every hard limit must hold. This plan is rejected.','正确。每项硬约束都必须满足，这个方案应被淘汰。'):t('OR would accept a plan when just one check passes. Look at the limit it breaks and try again.','OR 只要一项合格就会放行。看看超出的资源上限，再试一次。');},debug);
   }
-  stop();draw();
+  if(initialPair)method.value='enumeration';
+  loadMethod(initialPair ? 9*initialPair[0]+initialPair[1] : 0);
+  return ()=>{life.abort();stop();revision++;frameRevision++;};
 }

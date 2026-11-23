@@ -14,6 +14,12 @@ for(const part of Object.keys(Q.models))for(let level=0;level<3;level++){
 const fair=Q.solve('fair');const run=p=>E.execute(p,fair.model,fair.limits,fair.weights);
 const bad=run(E.starters[0]);assert.equal(bad.cases['1,8'].skipped,false);
 const repaired=run(correct);assert.equal(repaired.cases['1,8'].skipped,true);
+const lateCheck=run(['loop','gaps','weighted','guard','keep']);
+assert.equal(lateCheck.cases['1,8'].score,0.25);
+assert.deepEqual(lateCheck.winners,repaired.winners);
+assert.equal(E.tests(lateCheck,fair).find(test=>test.id==='guard').ok,false);
+const initialisedFirst=run(['loop','zero','guard','gaps','add1','add2','keep']);
+assert(E.tests(initialisedFirst,fair).every(test=>test.ok));
 assert.deepEqual(repaired.winners,[[0,8],[2,7],[4,6]]);
 assert.equal(repaired.cases['2,7'].score,1);
 assert.deepEqual(run(['loop','weighted']).error,['gaps',2]);

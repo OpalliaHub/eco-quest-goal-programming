@@ -29,7 +29,7 @@ function fullCodingStudio({host,part,level,result,t,term,el,button}){
   num.oninput=()=>{data.expectedScore=num.value;save();output.replaceChildren();};
   const controls=el('div',undefined,section,'learn-controls');
   const output=el('div',undefined,section,'studio-output');output.setAttribute('aria-live','polite');
-  const messages={domain:t('Loop covers the domain','循环覆盖全部数量'),guard:t('Hard resource limits','硬约束检查'),gaps:t('Nonnegative shortfalls','缺口不小于零'),score:t('Weighted score','加权分数'),best:t('Minimum and every tie','最低分和全部并列方案')};
+  const messages={domain:t('Loop covers the domain','循环覆盖全部数量'),guard:t('Over-limit plans are skipped before scoring','超限方案在计分前跳过'),gaps:t('Nonnegative shortfalls','缺口不小于零'),score:t('Weighted score','加权分数'),best:t('Minimum and every tie','最低分和全部并列方案')};
   const errors={loop:t('Begin with a loop block.','第一行需要一个循环。'),nested:t('Place a single pair loop at the start.','数对循环只放在开头一次。'),gaps:t('This line reads gaps before they have a value.','这一行读缺口时，缺口还没有赋值。'),score:t('This line reads a score before it has a value.','这一行读分数时，分数还没有赋值。')};
   function describe(s){return !s?t('Unvisited','未访问'):s.skipped?t('Skipped','跳过'):s.score===null?t('No score assigned','未赋分'):'Z = '+Number(s.score.toFixed(4));}
   function run(){
@@ -70,7 +70,9 @@ function fullCodingStudio({host,part,level,result,t,term,el,button}){
         el('p',label(op),panel);
         let value=t('Try this pair','取出这个方案')+' ('+pair+')';
         if(step){
-          if(step.skipped)value=t('Stop here. Skip this plan before scoring.','在这里停下，跳过这个方案。');
+          if(step.skipped)value=state.scored
+            ?t('This plan already reached scoring. Move the resource check earlier and test again.','这个方案已经打过分了。把资源检查移到计分之前，再测一次。')
+            :t('Stop here. Skip this plan before scoring.','在这里停下，跳过这个方案。');
           else if(op==='guard'||op==='loose')value=t('Continue to the next line.','继续执行下一行。');
           else if(op==='gaps'||op==='raw')value=t('Two gaps','两个缺口')+' = ['+step.gaps.join(', ')+']';
           else if(op==='keep'||op==='first')value=t('Lowest score so far','目前最低分')+' = '+Number(step.best.toFixed(4));

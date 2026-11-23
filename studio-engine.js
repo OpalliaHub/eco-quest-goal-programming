@@ -31,7 +31,7 @@ const BlockEngine = (() => {
       const costs=model.resources.map(linear);
       const exceeds=costs.map((v,i)=>v>limits[i]);
       const values=model.goals.map(linear);
-      const state={x,y,steps:[],gaps:null,score:null,skipped:false};
+      const state={x,y,steps:[],gaps:null,score:null,skipped:false,scored:false};
       result.cases[[x,y]]=state;
       for(let i=1;i<program.length;i++){
         const op=program[i];
@@ -49,11 +49,13 @@ const BlockEngine = (() => {
             if(state.score===null){result.error=['score',i+1];return result;}
             const j=op==='add1'?0:1;
             state.score+=weights[j]*state.gaps[j]/model.goals[j].scale;
+            state.scored=true;
             break;
           }
           case 'weighted': case 'equal':
             if(!state.gaps){result.error=['gaps',i+1];return result;}
             state.score=state.gaps.reduce((z,d,j)=>z+d*(op==='weighted'?weights[j]:1)/model.goals[j].scale,0);
+            state.scored=true;
             break;
           case 'keep': case 'first':
             if(state.score===null){result.error=['score',i+1];return result;}
@@ -72,7 +74,10 @@ const BlockEngine = (() => {
     const {candidates,winners,bestScore}=reference;
     const checks=[
       ['domain',p=>!!run.cases[[p.x,p.y]]],
-      ['guard',p=>run.cases[[p.x,p.y]]?.skipped===!p.feasible],
+      ['guard',p=>{
+        const state=run.cases[[p.x,p.y]];
+        return p.feasible ? state?.skipped===false : state?.skipped && !state.scored;
+      }],
       ['gaps',p=>!p.feasible||p.shortfalls.every((d,i)=>d===run.cases[[p.x,p.y]]?.gaps?.[i])],
       ['score',p=>!p.feasible||(typeof run.cases[[p.x,p.y]]?.score==='number'&&near(p.score,run.cases[[p.x,p.y]].score))]
     ];

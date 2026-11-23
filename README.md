@@ -2,6 +2,10 @@
 
 An interactive goal-programming classroom project for high-school learners, developed for INT6064.
 
+## Join the class demonstration
+
+Try the [English campus fair coding lesson](http://120.77.58.145/eco-quest/?lang=en#part/fair/code). The seven-minute presentation includes a live block repair and a hand calculation. Use the [PowerPoint presentation](classroom/eco-quest-presentation.pptx) or the [projector PDF](classroom/eco-quest-presentation.pdf).
+
 ## Run locally
 
 ```sh

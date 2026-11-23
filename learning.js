@@ -4,6 +4,8 @@
   const host = document.getElementById('learning');
   let language = 'zh';
   try { language = localStorage.getItem('ecoquest-language') || 'zh'; } catch (_) {}
+  const requestedLanguage=new URLSearchParams(location.search).get('lang');
+  if (['en','zh'].includes(requestedLanguage)) language=requestedLanguage;
   let part = 'fair', level = 0, step = 0, phase = 0, timer;
   let screen = 'home', stage = 'story', activeDuelPart = null;
   let showMath = false, introAnswer = '', introOpen = true;
@@ -124,7 +126,14 @@
     el('h1',t('Small plans. Big adventures.','小小规划，\n开启大冒险。'),copy);
     el('p',t('A Pokémon-themed learning platform for high-school students. Learn how goal programming balances several wishes when resources are limited. No coding experience needed.','面向高中生的宝可梦主题学习平台。在资源有限的情况下，学会用目标规划兼顾多个愿望。无需编程基础，从生活中的选择开始。'),copy);
     button(t('Start with Part 01 →','从 Part 01 开始 →'),()=>navigate('fair'),copy);
-    button(t('Open the coding studio','直接进入编程工作坊'),()=>navigate('fair','code'),copy);
+    button(t('Start the one-block lesson','从一块积木开始'),()=>{
+      level=0;
+      const firstLesson=guidedSessions.get('fair-0');
+      if(firstLesson) firstLesson.full=false;
+      navigate('fair','code');
+    },copy);
+    const walkthrough=el('a',t('Teacher walkthrough','教师图解教程'),copy,'first-cover-link');
+    walkthrough.href='first-lesson.html#'+language;
     const art=el('div',undefined,hero,'portal-art');
     for(const id of ['bulbasaur','pikachu','squirtle']) {const img=el('img',undefined,art);img.src=`assets/${id}.png`;img.alt=id;}
     const background=el('div',undefined,host,'portal-background');
@@ -228,7 +237,7 @@
       el('p',t('At least one unit is missing. Extra output beyond either target earns no credit. The row search finds every plan attaining this bound.','所以总缺口至少为 1，超出一项目标也不能抵消另一个缺口。用下一页的逐行定界找出所有达到 1 分的方案。'),hint);
     }
     stageMarker('code');
-    if(stage==='code')codingStudio({host,part,level,result,t,term,el,button});
+    if(stage==='code')codingStudio({host,part,level,result,t,term,unit,math,products:products[part],el,button});
     stageMarker('algorithm');
     if(stage==='algorithm') optimizationLab({host, model, result, t, term, el, button, math, onComplete:()=>{step=80;phase=3;}});
     stageMarker('reflect');

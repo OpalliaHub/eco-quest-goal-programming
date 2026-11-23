@@ -134,5 +134,5 @@
       goalsJointlyAchievable: feasible.some((plan) => plan.shortfalls.every((gap) => gap === 0))
     };
   }
-  return { models, defaults, solve };
+  return { models, defaults, solve, evaluate };
 });

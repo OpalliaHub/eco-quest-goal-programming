@@ -33,11 +33,19 @@
     const limits = preset.limits || QuestModels.defaults(activeId);
     const weights = preset.weights || [1, 1];
     el('arena-variables').textContent = `x = ${model.products[0].toLowerCase()}, y = ${model.products[1].toLowerCase()}.`;
-    el('arena-equations').replaceChildren(
-      ...model.resources.map((resource, i) => node('li', `${resource.name}: ${expression(resource)} ≤ ${limits[i]} ${resource.unit}`)),
-      ...model.goals.map((goal) => node('li', `${goal.name}: ${expression(goal)} ≥ ${goal.target} ${goal.unit}`))
-    );
-    el('arena-score-rule').textContent = `Score = ${weights[0]} × gap₁ ÷ ${model.goals[0].scale} + ${weights[1]} × gap₂ ÷ ${model.goals[1].scale}. Clamp each gap at zero.`;
+    const equations = el('arena-equations');
+    equations.replaceChildren();
+    for (const [i,r] of [...model.resources,...model.goals].entries()) {
+      const line=node('li',r.name+' ('+r.unit+') ');
+      const span=document.createElement('span');
+      const isLimit=i<model.resources.length;
+      katex.render(expression(r)+(isLimit?'\\le '+limits[i]:'\\ge '+r.target),span);
+      line.append(span);equations.append(line);
+    }
+    katex.render('Z='+model.goals.map((g,i)=>weights[i]+'\\frac{d_{'+(i+1)+'}^{-}}{'+g.scale+'}').join('+'),el('arena-score-rule'));
+    el('arena-reason').replaceChildren(...model.resources.map((r,i)=>{const option=node('option',r.name);option.value=i;return option;}));
+    preview();
+
   }
 
   function resetRound() {
@@ -163,15 +171,22 @@
   }
 
   ui.preset.addEventListener('change', renderSetup);
-  el('arena-reason').addEventListener('input', (event) => event.currentTarget.setCustomValidity(''));
+  function preview(){
+    const model=QuestModels.models[activeId];
+    if(!model)return '';
+    const x=el('arena-x').valueAsNumber, y=el('arena-y').valueAsNumber;
+    const i=Number(el('arena-reason').value),r=model.resources[i];
+    const limits=QuestDuel.arenas[activeId].presets[Number(ui.preset.value)].limits || QuestModels.defaults(activeId);
+    const box=el('arena-preview');
+    if(!Number.isInteger(x)||!Number.isInteger(y)){box.textContent='';return '';}
+    const used=r.x*x+r.y*y;
+    const tex=r.x+'\\cdot '+x+'+'+r.y+'\\cdot '+y+'='+used+(used<=limits[i]?'\\le ':'>')+limits[i];
+    katex.render(tex,box);return r.name+' '+used+' / '+limits[i];
+  }
+  for(const id of ['arena-x','arena-y','arena-reason'])el(id).addEventListener('input',preview);
   ui.setup.addEventListener('submit', (event) => {
     event.preventDefault();
-    const reason = el('arena-reason').value.trim();
-    if (!reason) {
-      el('arena-reason').setCustomValidity('Write one constraint check first.');
-      el('arena-reason').reportValidity();
-      return;
-    }
+    const reason=preview();
     prediction = { x: el('arena-x').valueAsNumber, y: el('arena-y').valueAsNumber, reason };
     match = QuestDuel.start(activeId, Number(ui.preset.value));
     const { arena, preset, run } = match;

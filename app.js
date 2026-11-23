@@ -310,7 +310,7 @@ function showModule(id) {
   $('model-heading').textContent = model.title;
   $('variables').textContent = `x counts ${model.products[0].toLowerCase()}. y counts ${model.products[1].toLowerCase()}. Choose whole numbers from 0 to 8.`;
   $('model-notes').textContent = model.detail;
-  $('formula').textContent = `Score = weight 1 × (${model.goals[0].name.toLowerCase()} shortfall ÷ ${model.goals[0].scale}) + weight 2 × (${model.goals[1].name.toLowerCase()} shortfall ÷ ${model.goals[1].scale})`;
+  katex.render('Z='+model.goals.map((g,i)=>'w_{'+(i+1)+'}\\frac{d_{'+(i+1)+'}^{-}}{'+g.scale+'}').join('+'),$('formula'));
   const table = $('data-table');
   const caption = make('caption', 'Fictional quantities per unit');
   const head = make('thead');

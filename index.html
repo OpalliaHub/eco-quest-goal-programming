@@ -6,6 +6,10 @@
   <meta name="description" content="Plan a school eco fair in five Pokémon-themed planning scenarios. Explore hard limits, weighted goals and optimal plans.">
   <title>Eco Quest | Pokémon Goal Programming Lab</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="vendor/katex/katex.min.css">
+  <script src="vendor/katex/katex.min.js" defer></script>
+  <script src="row-search.js" defer></script>
+  <script src="optimization.js" defer></script>
   <script src="solver.js" defer></script>
   <script src="scenarios.js" defer></script>
   <script src="duel-model.js" defer></script>
@@ -105,13 +109,13 @@
             </div>
             <div class="arena-predict">
               <h4>Predict your plan</h4>
-              <p>Choose whole numbers from 0 to 8. Write one constraint check before making a move.</p>
+              <p>Pick two counts and a resource to check.</p>
               <div class="arena-inputs">
                 <label for="arena-x">Predicted x<input id="arena-x" type="number" min="0" max="8" step="1" required></label>
                 <label for="arena-y">Predicted y<input id="arena-y" type="number" min="0" max="8" step="1" required></label>
               </div>
               <label for="arena-reason">Your constraint check</label>
-              <textarea id="arena-reason" rows="3" maxlength="500" required placeholder="For my plan, … must be at most …"></textarea>
+              <select id="arena-reason"></select><p id="arena-preview"></p>
               <button type="submit" class="button primary">Start duel <span aria-hidden="true">→</span></button>
             </div>
           </div>

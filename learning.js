@@ -35,6 +35,7 @@
     node.type = 'button'; node.disabled = disabled; node.onclick = handler;
     return node;
   };
+  function math(parent,tex){const box=el('div',undefined,parent,'quest-equation');katex.render(tex,box,{throwOnError:true});}
   function settings() {
     const limits = QuestModels.defaults(part);
     if (level === 2) {
@@ -195,14 +196,12 @@
     const table = el('table', undefined, modelDetails, 'learn-table');
     model.resources.forEach((r, i) => {
       const row = el('tr', undefined, table);
-      el('th', term(r.name), row); el('td', `${r.x}x + ${r.y}y ≤ ${result.limits[i]} ${unit(r.unit)}`, row);
+      el('th', term(r.name), row); math(el('td',undefined,row),r.x+'x+'+r.y+'y\\le '+result.limits[i]);
       el('td', `${chosen.resources[i]} / ${result.limits[i]} ${chosen.resources[i] <= result.limits[i] ? '✓' : '✕'}`, row);
     });
-    model.goals.forEach((g, i) => el('p', `${t('Goal','目标')} ${i + 1}: ${term(g.name)} = ${g.x}x + ${g.y}y ≥ ${g.target} ${unit(g.unit)}; ${t('scale','尺度')} s${i+1} = ${g.scale}; w${i+1} = ${result.weights[i]}`, modelDetails));
+    model.goals.forEach((g,i)=>{el('small',term(g.name)+' · '+unit(g.unit),modelDetails);math(modelDetails,'g_{'+(i+1)+'}='+g.x+'x+'+g.y+'y,\\quad T_{'+(i+1)+'}='+g.target);});
     el('p', t('All quantities are fictional classroom data. We penalise only shortfalls; exceeding a target carries no penalty.', '所有数值均为课堂假设。本模型只惩罚未达到目标的负偏差，超过目标不罚分。'), host);
-    const label = el('label', t('Predict a plan and justify one constraint before exploring', '探索前先预测一个方案，并写出一项约束检验'), host);
-    const input = el('textarea', undefined, label); input.value = prediction;
-    input.oninput = () => { prediction = input.value; };
+    el('p',t('Choose the two batch counts below. Before checking, point to the resource closest to its limit.','用下方按钮选择两种数量。检查前，先指出哪项资源最接近上限。'),host);
     const actions = el('div', undefined, host, 'learn-controls');
     for (let i = 0; i < 2; i++) {
       button(`${t('Add','增加')} ${language==='zh'?products[part][i]:model.products[i]} (+${i===0?'x':'y'})`, () => { plan[i]++; submitted = false; render(); }, actions, plan[i] >= 8 || !result.candidates.find(p => p.x === plan[0]+(i===0?1:0) && p.y === plan[1]+(i===1?1:0))?.feasible);
@@ -210,55 +209,14 @@
     }
     el('p', `${t('Your plan','你的方案')} (${plan.join(', ')}) · Z = ${n(chosen.score)}`, host);
     model.goals.forEach((g,i)=>{const box=el('div',undefined,host,'story-goal');el('p',`${term(g.name)}: ${chosen.values[i]} / ${g.target} ${unit(g.unit)} · ${t('Shortfall','还差')} ${chosen.shortfalls[i]}`,box);const bar=el('progress',undefined,box);bar.max=g.target;bar.value=Math.min(g.target,chosen.values[i]);bar.setAttribute('aria-label',term(g.name));});
+    math(host,'Z='+model.goals.map((g,i)=>result.weights[i]+'\\cdot\\frac{'+chosen.shortfalls[i]+'}{'+g.scale+'}').join('+')+'='+n(chosen.score));
+    el('p',t('Each fraction counts units of missing output. Smaller totals mean closer to the two targets.','每个分数都把还差的数量换成可比较的单位，总分越小，整体越接近两个目标。'),host);
     const tokens = el('div', undefined, host, 'learn-tokens');
     for (let i=0;i<plan[0]+plan[1];i++) el('span', (i<plan[0] ? QuestStories[part].icons[0]+' x' : QuestStories[part].icons[1]+' y'), tokens);
-    button(t('Check my plan','检查我的方案'), () => { submitted = true; render(); }, actions);
-    if (submitted) el('p', prediction.trim() ? (Math.abs(chosen.score-result.bestScore)<1e-9 ? t('Optimal! Explain the remaining shortfalls and any tied plans.','达到最优！请解释剩余偏差及并列最优方案。') : t('Feasible, but a lower score is possible. Use the walkthrough to find a better plan.','方案可行，但存在更低分数。使用下方演示寻找更好的方案。')) : t('Write your prediction and a constraint check first.','请先填写预测及约束检验。'), host, 'learn-feedback');
+    button(t('Check my plan','检查我的方案'), () => { prediction = plan.join(', '); submitted = true; render(); }, actions);
+    if (submitted) el('p', (Math.abs(chosen.score-result.bestScore)<1e-9 ? t('Optimal! Explain the remaining shortfalls and any tied plans.','达到最优！请解释剩余偏差及并列最优方案。') : t('Feasible, but a lower score is possible. Use the walkthrough to find a better plan.','方案可行，但存在更低分数。使用下方演示寻找更好的方案。')), host, 'learn-feedback');
     stageMarker('algorithm');
-    showMath = stage === 'algorithm';
-    if(showMath) {
-    el('p',t('g is the achieved amount; d− is the remaining shortfall; d+ is the surplus. s converts a shortfall into scoring units. w is its importance. Z is the total weighted shortfall, so lower is better.', 'g 是实际完成量；d⁻ 是距离目标还差的量；d⁺ 是超出目标的量。s 把偏差换算成比较用的单位，w 表示重视程度，Z 是加权偏差总分，越小越好。'),host);
-    el('h3', t('Watch the algorithm run','观察算法如何运行'), host);
-    el('p', t('Exact enumeration on the bounded integer domain: visit all 81 pairs. The four stages show real solver values. This is a small-instance goal-programming algorithm, not a simplex demonstration.', '在有界整数域内穷举求解：遍历全部 81 个数对。四个阶段展示求解器的真实计算值。这是适用于小规模目标规划的枚举算法演示。'), host);
-    const controls = el('div', undefined, host, 'learn-controls');
-    button(t('Next step','下一步'), next, controls, step === 80 && phase === 3);
-    button(timer ? t('Pause','暂停') : t('Play','播放'), () => {
-      if (timer) { clearInterval(timer); timer = undefined; } else timer = setInterval(next, 650);
-      render();
-    }, controls, step === 80 && phase === 3);
-    button(t('Restart trace','重播算法'), () => { clearInterval(timer); timer=undefined; step=0;phase=0;render(); }, controls);
-    button(t('Show completed search','查看完整搜索'), () => { clearInterval(timer);timer=undefined;step=80;phase=3;render(); }, controls);
-    const slider = el('input', undefined, controls); slider.type='range';slider.min=0;slider.max=323;slider.value=step*4+phase;
-    slider.setAttribute('aria-label',t('Algorithm step','算法步骤'));
-    slider.oninput=()=>{clearInterval(timer);timer=undefined;step=Math.floor(Number(slider.value)/4);phase=Number(slider.value)%4;render();};
-    const current = result.candidates[step];
-    const processed = result.candidates.slice(0, step + (phase === 3 ? 1 : 0)).filter(p=>p.feasible);
-    const incumbent = processed.length ? Math.min(...processed.map(p=>p.score)) : null;
-    const stages = [t('1 · Enumerate pair','1 · 枚举数对'),t('2 · Check hard limits','2 · 检验硬约束'),t('3 · Calculate deviations','3 · 计算目标偏差'),t('4 · Compare weighted score','4 · 比较加权分数')];
-    const status = el('div', undefined, host, 'learn-trace'); status.setAttribute('aria-live',timer?'off':'polite');
-    el('h4', `${stages[phase]} — (${current.x}, ${current.y}) [${step+1}/81]`, status);
-    if (phase>=1) model.resources.forEach((r,i)=>el('p',`${r.x} × ${current.x} + ${r.y} × ${current.y} = ${current.resources[i]} ${current.resources[i]<=result.limits[i]?'≤':'>'} ${result.limits[i]} ${current.resources[i]<=result.limits[i]?'✓':'✕'}`,status));
-    if (phase>=2 && current.feasible) model.goals.forEach((g,i)=>el('p',`g${i+1} = ${g.x} × ${current.x} + ${g.y} × ${current.y} = ${current.values[i]}; d${i+1}⁻ = max(0, ${g.target} − ${current.values[i]}) = ${current.shortfalls[i]}; d${i+1}⁺ = ${Math.max(0,current.values[i]-g.target)}`, status));
-    if (phase>=2 && !current.feasible) el('p',t('Reject this pair. Infeasible plans never compete for the optimum.','淘汰此数对。不可行方案不参与最优解比较。'),status);
-    if (phase===3 && current.feasible) el('p',`Z = ${result.weights[0]} × ${current.shortfalls[0]}/${model.goals[0].scale} + ${result.weights[1]} × ${current.shortfalls[1]}/${model.goals[1].scale} = ${n(current.score)}`,status);
-    el('p',t('Best score among completed feasible pairs: ','已完成检验的可行方案中最小分数：')+(incumbent===null?'—':n(incumbent)),status);
-    const grid = el('div',undefined,host,'learn-grid');
-    result.candidates.forEach((p,i)=>{
-      const seen = i<step || (i===step && phase===3);
-      const cell = button(`${p.x},${p.y}`,()=>{clearInterval(timer);timer=undefined;step=i;phase=0;render();},grid);
-      cell.className='learn-cell';
-      cell.dataset.state = !seen?'pending':!p.feasible?'rejected':Math.abs(p.score-incumbent)<1e-9?'best':'feasible';
-      cell.setAttribute('aria-current',String(i===step));
-      cell.title=seen ? (p.feasible?`Z = ${n(p.score)}`:t('Infeasible','不可行')):t('Not yet evaluated','尚未检验');
-    });
-    el('p',t('Grey = unvisited · red = rejected · blue = feasible · gold = best so far. Click a pair to replay its calculation.','灰色＝未访问 · 红色＝不可行 · 蓝色＝可行 · 金色＝目前最优。点击任意数对重看计算。'),host);
-    el('pre','for x = 0…8\n  for y = 0…8\n    if any resource > limit: continue\n    d[i] = max(0, target[i] − value[i])\n    Z = Σ weight[i] × d[i] / scale[i]\n    if Z < best: replace winners\n    else if |Z − best| ≤ 1e−9: keep tie',host);
-    if(step===80 && phase===3){
-      el('p',`${t('Global optimum in this domain','当前整数域的全局最优')} Z = ${n(result.bestScore)}; ${result.winners.map(p=>`(${p.x}, ${p.y})`).join(', ')}`,host);
-      const original=QuestModels.solve(part);
-      el('p',`${t('Original baseline score','原始条件分数')} = ${n(original.bestScore)}; ${t('current score','当前分数')} = ${n(result.bestScore)}.`,host);
-    }
-    }
+    if(stage==='algorithm') optimizationLab({host, model, result, t, term, el, button, math, onComplete:()=>{step=80;phase=3;}});
     stageMarker('reflect');
     const reflectionLabel=el('label',t('Explain your decision, the weights and a modelling limitation','解释你的决策、目标权重和一项模型局限'),host);
     const notes=el('textarea',undefined,reflectionLabel);notes.value=reflection;notes.oninput=()=>{reflection=notes.value;};

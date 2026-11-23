@@ -26,3 +26,4 @@
 @media(prefers-reduced-motion:reduce){.portal-part{transition:none}}
 
 #learning .portal-cover h1{white-space:pre-line;text-wrap:balance}
+.opt-lab{background:#fff;padding:clamp(10px,3vw,30px);border:1px solid #cbdcd5;border-radius:18px}.opt-display{display:grid;grid-template-columns:minmax(130px,1fr) 2fr;gap:1em;margin:1em 0;padding:1em;background:#eff7f3;border-radius:12px}.opt-display svg{width:100%;display:block}.quest-equation{overflow-x:auto;padding:.4em 0;font-size:1.02rem}.opt-work{margin-top:1.2em}.opt-lab select{font:inherit;padding:.5em;border-radius:6px}.opt-lab small{display:block}@media(max-width:620px){.opt-display{grid-template-columns:1fr}}

@@ -16,7 +16,7 @@
     'Open Free Lab':'打开自由实验室','View the model':'查看数学模型','Play the planning duel':'开始规划对战',
     'Stall Check':'摊位检查','Check the hard limits':'检查硬约束','Partner Switch':'更换伙伴','Change the goal weights':'改变目标权重','Both Goals':'双目标达成','Test a resource upgrade':'测试资源升级',
     'Can this plan fit?':'这个方案可行吗？','Your team proposes 1 bookmark batch and 8 notebook batches. Which hard limit does it break?':'团队计划制作 1 批书签和 8 批笔记本。违反了哪项硬约束？',
-    'Make a prediction':'先作预测','Test prediction':'检验预测','Display space':'陈列空间','Budget':'预算','Production effort':'制作工时','Paper stock':'纸张库存','Cost':'费用','Funds':'筹款盈余','Paper reuse':'纸张再利用',
+    'Pick two counts and a resource to check.':'选择两种数量，再选一项资源进行检验。','Make a prediction':'先作预测','Test prediction':'检验预测','Display space':'陈列空间','Budget':'预算','Production effort':'制作工时','Paper stock':'纸张库存','Cost':'费用','Funds':'筹款盈余','Paper reuse':'纸张再利用',
     'PLAN FIRST':'先作规划','PARTNER ARENA':'伙伴对战区','Stall Showdown':'市集摊位对战','Berry Bed Clash':'树果种植对战','Supply Draft':'补给包规划对战','Survey Route Duel':'调查路线对战',
     'Scenario setting':'情景条件','Original stall':'原始摊位','More budget and effort':'增加预算和工时','Resource limits and goal equations':'资源约束与目标方程','Predict your plan':'预测你的方案','Predicted x':'预测 x','Predicted y':'预测 y','Your constraint check':'你的约束检验',
     'Choose whole numbers from 0 to 8. Write one constraint check before making a move.':'选择 0 至 8 的整数。行动前先写一项约束检验。',
@@ -127,7 +127,7 @@
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
-      if (!node.parentElement || node.parentElement.closest('#learning,script,style,textarea,pre')) continue;
+      if (!node.parentElement || node.parentElement.closest('#learning,.katex,script,style,textarea,pre')) continue;
       const prior = originals.get(node);
       const original = prior && node.data === prior.output ? prior.original : node.data;
       let output = original;

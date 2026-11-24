@@ -9,6 +9,7 @@ from socketserver import ThreadingMixIn
 from urllib.parse import parse_qsl, unquote, urlsplit
 
 from chart import score_chart
+from execution import execution_trace
 from lesson_model import MISSIONS, settings, solve, step
 from score_distribution import score_distribution
 
@@ -16,6 +17,7 @@ JSON_TYPE = 'application/json; charset=utf-8'
 SOURCE = Path(__file__).with_name('lesson_model.py')
 SQL = SOURCE.with_name('score_distribution.sql')
 FIELDS = {'health': (), 'source.py': (), 'source.sql': (), 'solve': ('part', 'level', 'method'),
+          'execution': ('part', 'level', 'method', 'step'),
           'step': ('part', 'level', 'x', 'y'),
           'chart.svg': ('part', 'level', 'method', 'lang', 'step')}
 
@@ -86,6 +88,13 @@ def response(target, site=None):
         if part not in MISSIONS:
             raise ValueError('Unknown mission.')
         level = integer(query.get('level', '0'), 'level', 0, 2)
+        if route == 'execution':
+            method = query.get('method', 'enumeration')
+            mission, limits, _ = settings(part, level)
+            width = limits[mission.capacity_index] + 1
+            total = width if method == 'rows' else width * width
+            index = integer(query.get('step', '1'), 'step', 1, total)
+            return 200, JSON_TYPE, json_body(execution_trace(part, level, method, index))
         if route == 'step':
             mission, limits, _ = settings(part, level)
             max_count = limits[mission.capacity_index]

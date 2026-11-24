@@ -31,7 +31,7 @@ FRONT = sorted(path.name for path in SOURCE.iterdir()
                if path.is_file() and path.suffix in ('.html', '.js', '.css'))
 FRONT += sorted(str(path.relative_to(SOURCE)) for path in (SOURCE / 'assets').glob('*.png'))
 FRONT += ['classroom/eco-quest-presentation.pptx', 'classroom/eco-quest-presentation.pdf']
-KERNEL = ['lesson_model.py', 'score_distribution.py', 'score_distribution.sql', 'chart.py', 'server.py']
+KERNEL = ['lesson_model.py', 'execution.py', 'score_distribution.py', 'score_distribution.sql', 'chart.py', 'server.py']
 PUBLIC = ['kernel/lesson_model.py', 'kernel/score_distribution.sql']
 INCLUDE = 'include /opt/eco-quest-kernel/current/location.conf;'
 ANCHOR = re.compile(r'(?m)^([ \t]*)location\s+\^~\s+/eco-quest/\s*\{')

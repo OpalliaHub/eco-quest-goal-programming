@@ -20,6 +20,7 @@ Open [the fair reference lesson on this computer](http://127.0.0.1:8766/?lang=en
 | --- | --- |
 | JavaScript, `studio-engine.js` | Executes the student's ordered blocks, including incorrect instructions. Saves predictions and test runs in the browser. |
 | Python, `kernel/lesson_model.py` | Checks resource limits and scores feasible plans with weighted shortfalls. Exhaustive search and row bounds both retain tied winners. |
+| Python, `kernel/execution.py` | Records the executed lines and local values from the actual reference model for a selected search step. |
 | Python, `kernel/chart.py` | Draws an SVG from the chosen search trace. The line records the lowest eligible score reached by that step. |
 | SQL, `kernel/score_distribution.sql` | Groups feasible plans by score in a temporary SQLite database. At the equal-weight fair, the minimum group contains three of 60 feasible plans. |
 | HTTP, JSON and SVG | Carry the reference calculations and chart to the bilingual lesson. Student-authored programs run separately from the reference. |
@@ -46,7 +47,11 @@ For each mission the shared capacity gives the candidate range. The fair has ten
 
 Row bounds provide a second exact method. For each x, divide each remaining resource by its per-y use and round down. The smallest bound gives the largest feasible y. Both goal outputs increase with y, so the endpoint minimises the score on that row. In a winning row, scan backwards while the score stays tied. This reasoning depends on nonnegative yields, weights and resource costs.
 
-The chart plots feasible candidate scores and the running minimum. Use Previous, Next, Play, Pause or Finish. Foundation includes a paper-and-pencil proof for the fair and a guided AND/OR debugging check. LaTeX is rendered offline with bundled KaTeX.
+In **Watch the algorithm**, step through the search or press Play. The 3D axes show quantities of the two products and the plan's penalty. A crossed floor marker means a resource check failed and Python assigned no score. The 2D chart follows the lowest score so far. Switching views keeps the same search step. Foundation includes a paper-and-pencil proof for the fair and a guided AND/OR debugging check. LaTeX is rendered offline with bundled KaTeX.
+
+Try the [Python walkthrough for two bookmark batches and seven notebook batches](http://120.77.58.145/eco-quest/?lang=en&inspect=python#part/fair/algorithm/2/7). Follow the highlighted source lines. Check the hours, read the two penalties of 0.5, and look at the winners saved before and after this step. Compare the [one-bookmark, eight-notebook case](http://120.77.58.145/eco-quest/?lang=en&inspect=python#part/fair/algorithm/1/8): it needs 17 hours, so the resource check returns before goal scoring. The Python walkthrough needs the classroom server. A local run with the server supports the same walkthrough without internet access.
+
+Students can predict the next branch, run it, then export their prediction and the observed outcome with the mission reflection. From the coding studio, run a block program on a test pair and open the 3D comparison to inspect that same pair in the reference search.
 
 ## Languages and scope
 

@@ -1,6 +1,6 @@
 // Both engines expose the same classroom trace. The browser model is also usable
 // when the site is opened from a file or the Python service is unavailable.
-function optimizationLab({host, part, level, initialPair, model, result, t, term, unit, el, button, math, onComplete}) {
+function optimizationLab({host, part, level, initialPair, model, result, axisLabels, comparison, t, term, unit, el, button, math, onComplete, onPrediction}) {
   const lab = el('section', undefined, host, 'opt-lab');
   const online = location.protocol === 'https:' || location.protocol === 'http:';
   const controls = el('div', undefined, lab, 'learn-controls');
@@ -10,17 +10,37 @@ function optimizationLab({host, part, level, initialPair, model, result, t, term
     ['rows', t('Row bounds · hand method', '逐行定界 · 手算方法')],
     ['enumeration', t('Full enumeration', '逐一枚举')]
   ]) el('option', label, method).value = value;
+  let view='3d';
+  const views=el('div',undefined,controls,'opt-views');
+  views.setAttribute('role','group');views.setAttribute('aria-label',t('Chart view','图表视图'));
+  for (const [key,label] of [['3d',t('3D plans','3D 方案图')],['2d',t('2D progress','2D 进度图')]]) {
+    const b=button(label,()=>{
+      if(view!==key){view=key;draw();}
+    },views);
+    b.dataset.view=key;
+  }
+  const pythonJump=button(t('Follow Python ↓','跟随 Python 运行 ↓'),()=>{
+    const panel=lab.querySelector('[data-python-flow]');
+    panel.open=true;
+    panel.querySelector('summary').focus();
+    panel.scrollIntoView({block:'start'});
+  },controls);
+  pythonJump.classList.add('opt-python-link');
   const status = el('p', '', lab, 'opt-engine');
   status.setAttribute('role', 'status');
   const note = el('p', '', lab);
   const display = el('div', undefined, lab, 'opt-display');
   const board = el('div', undefined, display);
   const chart = el('div', undefined, display, 'opt-chart');
+  const three = el('div', undefined, display, 'opt-space');
+  const blockResult=el('p','',lab,'opt-from-blocks');
+  blockResult.hidden=true;
   const steps = el('div', undefined, lab, 'learn-controls');
   const back = button(t('Previous step','上一步'), () => move(index-1), steps);
   const play = button('', () => timer ? stop() : start(), steps);
   const next = button(t('Next step','下一步'), () => move(index+1), steps);
   button(t('Finish','看最终结果'), () => move(trace.length-1), steps);
+  const activities=el('div',undefined,lab,'opt-activities');
   const inspect = el('details', undefined, lab, 'opt-inspect');
   el('summary', t('Test a particular plan', '检验你选的方案'), inspect);
   const picks = el('div', undefined, inspect, 'learn-controls');
@@ -39,6 +59,17 @@ function optimizationLab({host, part, level, initialPair, model, result, t, term
   const working = el('div', undefined, lab, 'opt-work');
   const mathBox = el('div', undefined, working, 'opt-calculation');
   const summary = el('div', undefined, working, 'opt-answer');
+  const prediction=createPathPrediction({host:activities,t,term,model,result,el,button,pause:stop,advance:move,record:onPrediction});
+  const walk=createPythonWalk({host:activities,t,term,onOpen:stop,
+    getTrace:(name,step)=>get(query('execution',{method:name,step}))});
+  const space=createScoreSpace({host:three,t,xLabel:axisLabels[0],yLabel:axisLabels[1],
+    maxCount:result.maxCount,maxScore:Math.max(1,...result.feasible.map(p=>p.score)),
+    onInspect:(x,y)=>{
+      const found=trace.findIndex(p=>p.x===x && p.y===y);
+      quantities[0].value=x;quantities[1].value=y;
+      if(found>=0)move(found);
+      else {method.value='enumeration';loadMethod(x*(result.maxCount+1)+y);}
+    }});
   const code = el('details', undefined, lab, 'opt-code');
   el('summary', t('Read the Python behind this calculation','看这一步背后的 Python'), code);
   el('p', t('The search tries a pair of quantities, checks supplies, and scores the remaining goal gaps only when the plan fits.', '程序取出一组数量，先查资源是否够用，再给可行方案的两个目标缺口打分。'), code);
@@ -181,12 +212,23 @@ function optimizationLab({host, part, level, initialPair, model, result, t, term
     const token=++frameRevision,frame=trace[index], end=index===trace.length-1;
     back.disabled=index===0;next.disabled=end;
     if(end){stop();onComplete();}
-    note.textContent=method.value==='rows'?t('Fix x. Each resource gives an upper bound on y. Try the largest y that fits them all.','先固定 x，算出每项资源允许的 y 上限，再试同时满足这些上限的最大 y。'):t('Try every pair. A plan can compete for the lowest score only if every resource fits.','依次检查每对数量，只有满足所有限制的方案才参加最低分比较。');
+    const searchHint=method.value==='rows'?t('Try the largest feasible y in each row.','固定 x，每行先试可行的最大 y。'):t('Try every pair in order.','按顺序检查每一对数量。');
+    note.textContent=searchHint+' '+(view==='3d'?
+      t('Height is the penalty. A lower dot is better; a cross means scoring was skipped.','高度表示罚分。点越低越好；叉号表示跳过打分。'):
+      t('Watch how the best-so-far line changes as more plans are tested.','观察每次检查后，目前最低分这条线怎样变化。'));
     board.replaceChildren();summary.replaceChildren();
     el('strong',t('Step ','步骤 ')+frame.step+' / '+trace.length,board);
     el('p',t('Current plan','当前方案')+'  '+(frame.y===null?'x = '+frame.x+' · '+t('No feasible y','本行无可行 y'):'('+frame.x+', '+frame.y+')'),board);
     el('p',t('Current score','当前分数')+'  '+fmt(frame.score),board);
     el('strong',t('Lowest so far','目前最低分')+'  '+fmt(frame.bestSoFar),board);
+    if(comparison && frame.x===comparison.x && frame.y===comparison.y){
+      const outcomes={unvisited:t('never visited','没有访问'),skip:t('skipped','跳过'),
+        none:t('no score assigned','没有赋分'),score:'Z = '+fmt(comparison.score)};
+      blockResult.textContent=t('Your blocks: ','你的积木：')+outcomes[comparison.action]+
+        t(' · Reference: ',' · 参考程序：')+(frame.feasible?'Z = '+fmt(frame.score):t('skipped','跳过'));
+      if(comparison.late)blockResult.textContent+=t(' · Your blocks scored before checking the limit.',' · 你的积木在检查资源前已经给方案打过分。');
+      blockResult.hidden=false;
+    }else blockResult.hidden=true;
     if(end){
       el('h4',t('All minimum-score plans','所有最低分方案'),summary);
       el('p',answer.feasibleCount+' / '+result.candidates.length+' '+t('feasible plans','个方案可行'),summary);
@@ -202,8 +244,14 @@ function optimizationLab({host, part, level, initialPair, model, result, t, term
         }
       }
     }
-    browserChart();
-    if(engine==='python'){
+    for(const b of views.children)b.setAttribute('aria-pressed',String(b.dataset.view===view));
+    display.dataset.view=view;
+    three.hidden=view!=='3d';chart.hidden=view!=='2d';
+    prediction.update({trace,index,method:method.value});
+    walk.update({engine:status.dataset.engine,method:method.value,frame});
+    if(view==='3d')space.update({trace,index,winners:answer.winners,method:method.value});
+    else browserChart();
+    if(view==='2d' && engine==='python'){
       const img=new Image();
       img.alt=t('Python chart of the search through step ','Python 搜索过程图，展示至第 ')+frame.step;
       img.onload=()=>{if(token===frameRevision&&lab.isConnected)chart.replaceChildren(img);};
@@ -233,5 +281,5 @@ function optimizationLab({host, part, level, initialPair, model, result, t, term
   }
   if(initialPair)method.value='enumeration';
   loadMethod(initialPair ? (result.maxCount+1)*initialPair[0]+initialPair[1] : 0);
-  return ()=>{life.abort();stop();revision++;frameRevision++;};
+  return ()=>{life.abort();stop();space.destroy();walk.destroy();revision++;frameRevision++;};
 }

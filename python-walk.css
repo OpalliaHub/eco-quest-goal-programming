@@ -1,0 +1,43 @@
+.python-walk {
+  margin:14px 0;
+  background:#fff;
+  border:1px solid #c6d8cd;
+  border-radius:12px;
+  color:#233e32;
+}
+.python-walk>summary {padding:12px 15px;font-weight:700;cursor:pointer}
+.pw-pane {padding:0 15px 15px}
+.pw-status {font-size:.85rem;line-height:1.4;color:#436454}
+.pw-status:empty {display:none}
+.pw-route,.pw-controls,.pw-locals {display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pw-route {margin:12px 0;counter-reset:pythonStage}
+.pw-stage,.pw-button {background:#fff;color:#294537;border:1px solid #b5cbbe;border-radius:7px;padding:7px 10px;font:600 .84rem/1.4 system-ui,sans-serif;cursor:pointer;min-height:36px}
+.pw-stage {counter-increment:pythonStage}
+.pw-stage::before {content:counter(pythonStage) " · ";font-variant-numeric:tabular-nums}
+.pw-stage[aria-current=step] {color:#fff;background:#255744;border-color:#255744}
+.pw-stage:disabled,.pw-button:disabled {opacity:.5;cursor:default}
+.pw-stage:focus-visible,.pw-button:focus-visible {outline:3px solid #397864;outline-offset:2px}
+.pw-card {padding:14px;border-radius:10px;border:1px solid #cfdfd3;background:#f6f9f2}
+.pw-explain {display:block;line-height:1.45}
+.pw-source {background:#19392e;color:#f4f9ef;border-radius:8px;overflow:hidden;margin:11px 0}
+.pw-filename {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 11px;color:#d0e2d4;background:#25493b;font:500 .74rem/1.4 ui-monospace,monospace}
+.pw-filename span:last-child {white-space:nowrap}
+#learning .python-walk pre.pw-code,.python-walk pre.pw-code {padding:10px 11px;margin:0;border:0;background:transparent;color:#fff;border-radius:0;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:.85rem/1.55 ui-monospace,monospace}
+.python-walk code {font:inherit}
+.pw-locals {gap:4px 12px;margin:8px 0 0;font:.8rem/1.5 ui-monospace,monospace}
+.pw-locals>div {display:flex;gap:4px}
+.pw-locals dt {color:#466656}
+.pw-locals dt::after {content:" ="}
+.pw-locals dd {margin:0;font-weight:700}
+.pw-controls {margin:10px 0}
+.pw-counter {margin-right:auto;color:#466656;font-size:.82rem;font-variant-numeric:tabular-nums}
+.pw-raw {font-size:.82rem;color:#3c5e4d}
+.pw-raw summary {cursor:pointer}
+.pw-raw pre {max-height:14rem;overflow:auto}
+@media(max-width:500px){
+  .pw-pane {padding:0 10px 10px}
+  .pw-route {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pw-stage,.pw-button {padding:6px 8px}
+  .pw-counter {flex-basis:100%}
+  .pw-card {padding:10px}
+}

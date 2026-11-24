@@ -14,7 +14,6 @@
   let plan = [0, 0], prediction = '', reflection = '', submitted = false;
   const branchPredictions=new Map();
   let blockComparison=null;
-  let openedPythonLink=false;
   const names = {
     fair: ['Campus Eco Fair', '校园环保市集'], garden: ['Berry Garden', '树果园'],
     center: ['Pokémon Center Supplies', '宝可梦中心补给'], field: ['Field Survey', '野外调查'],
@@ -114,6 +113,11 @@
     } else {screen='home';}
     if(screen==='home' || stage!=='algorithm')blockComparison=null;
     render(); window.scrollTo({top:0,behavior:'instant'});
+    const pythonPanel=host.querySelector('[data-python-flow]');
+    if(pythonPanel && bits.length===5 && new URLSearchParams(location.search).get('inspect')==='python'){
+      pythonPanel.open=true;
+      requestAnimationFrame(()=>{if(pythonPanel.isConnected)pythonPanel.scrollIntoView({block:'start'});});
+    }
   }
   function cover() {
     const hero=el('section',undefined,host,'portal-cover');
@@ -162,6 +166,8 @@
   }
   let closeAlgorithm;
   function render() {
+    const restorePython=host.dataset.route===location.hash && host.querySelector('[data-python-flow]')?.open;
+    host.dataset.route=location.hash;
     closeAlgorithm?.();
     closeAlgorithm=undefined;
     host.replaceChildren();
@@ -262,14 +268,7 @@
           if(!branchPredictions.has(key))branchPredictions.set(key,[]);
           branchPredictions.get(key).push(record);
         }});
-      if(!openedPythonLink && new URLSearchParams(location.search).get('inspect')==='python'){
-        const panel=host.querySelector('[data-python-flow]');
-        if(panel){
-          openedPythonLink=true;
-          panel.open=true;
-          requestAnimationFrame(()=>{if(panel.isConnected)panel.scrollIntoView({block:'start'});});
-        }
-      }
+      if(restorePython)host.querySelector('[data-python-flow]').open=true;
     }
     stageMarker('reflect');
     const reflectionLabel=el('label',t('Explain your decision, the weights and a modelling limitation','解释你的决策、目标权重和一项模型局限'),host);

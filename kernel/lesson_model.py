@@ -1,44 +1,44 @@
 """Eco Quest's weighted goal program, using only Python's standard library.
 
 Run this file to see the campus fair solution. Import solve() to try another
-mission or algorithm. Each count is a whole number from zero to eight.
+mission or algorithm. Both counts are whole numbers. Their sum cannot exceed
+that mission’s display, bed, shelf, round or box capacity.
 """
 from collections import namedtuple
 from fractions import Fraction
 
 Resource = namedtuple('Resource', 'name unit x y limit')
 Goal = namedtuple('Goal', 'name unit x y target scale')
-Mission = namedtuple('Mission', 'resources goals')
-MAX_COUNT = 8
+Mission = namedtuple('Mission', 'capacity_index resources goals')
 
 # Each x or y coefficient is the amount used or produced by one batch.
 MISSIONS = {
-    'fair': Mission(
+    'fair': Mission(2,
         [Resource('Cost', 'HKD', 20, 30, 260),
          Resource('Production effort', 'person-hours', 1, 2, 16),
          Resource('Display space', 'batches', 1, 1, 10),
          Resource('Paper stock', 'sheets', 20, 60, 600)],
         [Goal('Funds', 'HKD', 30, 40, 360, 40),
          Goal('Paper reuse', 'sheets', 20, 60, 480, 40)]),
-    'garden': Mission(
+    'garden': Mission(2,
         [Resource('Water', 'L', 2, 3, 17),
          Resource('Care time', 'hours', 3, 1, 15),
          Resource('Garden space', 'beds', 1, 1, 7)],
         [Goal('Harvest', 'crates', 5, 3, 32, 5),
          Goal('Habitat', 'points', 1, 4, 16, 5)]),
-    'center': Mission(
+    'center': Mission(2,
         [Resource('Materials', 'units', 3, 2, 18),
          Resource('Packing time', 'time blocks', 2, 3, 18),
          Resource('Shelf space', 'packs', 1, 1, 8)],
         [Goal('Center readiness', 'points', 4, 2, 24, 4),
          Goal('Trail readiness', 'points', 1, 5, 22, 4)]),
-    'field': Mission(
+    'field': Mission(2,
         [Resource('Survey time', 'minutes', 15, 25, 125),
          Resource('Camera battery', 'units', 3, 2, 17),
          Resource('Round limit', 'rounds', 1, 1, 7)],
         [Goal('Useful photos', 'photos', 5, 3, 28, 5),
          Goal('Habitat coverage', 'points', 2, 5, 27, 5)]),
-    'cards': Mission(
+    'cards': Mission(3,
         [Resource('Trainer cards', 'cards', 24, 32, 180),
          Resource('Energy cards', 'cards', 18, 12, 112),
          Resource('Pokémon cards', 'cards', 18, 16, 145),
@@ -73,8 +73,9 @@ def goal_penalty(goal, weight, x, y):
 def step(part, level, x, y):
     """Follow a single pair through its resource guard and goal calculation."""
     mission, limits, weights = settings(part, level)
-    if any(type(n) is not int or not 0 <= n <= MAX_COUNT for n in (x, y)):
-        raise ValueError('x and y must be integers from 0 to 8.')
+    max_count = limits[mission.capacity_index]
+    if any(type(n) is not int or not 0 <= n <= max_count for n in (x, y)):
+        raise ValueError('x and y must be integers from 0 to {}.'.format(max_count))
 
     resources = []
     for resource, limit in zip(mission.resources, limits):
@@ -129,9 +130,10 @@ def solve(part='fair', level=0, method='enumeration'):
         trace.append(frame)
         return frame['feasible']
 
-    for x in range(MAX_COUNT + 1):
+    max_count = limits[mission.capacity_index]
+    for x in range(max_count + 1):
         if method == 'enumeration':
-            for y in range(MAX_COUNT + 1):
+            for y in range(max_count + 1):
                 if visit(x, y):
                     feasible_count += 1
         else:
@@ -140,7 +142,7 @@ def solve(part='fair', level=0, method='enumeration'):
             for resource, limit in zip(mission.resources, limits):
                 remaining = limit - resource.x * x
                 bounds.append(remaining // resource.y if remaining >= 0 else -1)
-            last_y = min([MAX_COUNT] + bounds)
+            last_y = min([max_count] + bounds)
             feasible_count += last_y + 1
             visit(x, last_y if last_y >= 0 else None, bounds)
 
@@ -156,7 +158,7 @@ def solve(part='fair', level=0, method='enumeration'):
                 winners.append([x, y])
         winners.sort()
     return dict(part=part, level=level, method=method, limits=limits,
-                weights=weights, bestScore=best, winners=winners,
+                weights=weights, maxCount=max_count, bestScore=best, winners=winners,
                 feasibleCount=feasible_count, trace=trace)
 
 

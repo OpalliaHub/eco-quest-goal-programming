@@ -23,6 +23,58 @@ class LessonTests(unittest.TestCase):
         self.assertEqual(legal['score'], 1)
         self.assertEqual(step('fair', 1, 2, 7)['score'], 2)
 
+    def test_stall_capacity_and_search_indices(self):
+        full = solve('fair', 0)
+        self.assertEqual((len(full['trace']), full['feasibleCount']), (121, 60))
+        for x, y in ((9, 0), (9, 1), (10, 0)):
+            self.assertTrue(step('fair', 0, x, y)['feasible'])
+        last_bookmarks = step('fair', 0, 10, 0)
+        self.assertEqual([r['used'] for r in last_bookmarks['resources']], [200, 10, 10, 200])
+        self.assertEqual(last_bookmarks['gaps'], [60, 280])
+        self.assertEqual(last_bookmarks['score'], 8.5)
+        self.assertEqual(full['trace'][110]['score'], 8.5)
+        self.assertEqual([full['trace'][29][key] for key in ('x', 'y', 'score')], [2, 7, 1])
+        self.assertFalse(step('fair', 0, 10, 1)['feasible'])
+        status, _, result = response('/api/step?part=fair&level=0&x=10&y=0')
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(result)['score'], 8.5)
+
+    def test_all_activity_answers_against_resource_bounds(self):
+        # Enumerate the triangle x+y<=capacity independently; outside it,
+        # every pair violates the capacity inequality. Cross-check every
+        # point in the remaining square against that solution.
+        from fractions import Fraction
+        from lesson_model import settings
+        # Hand-checked answer keys (number of eligible pairs, score and all ties).
+        tied_fair = [(0, 8), (2, 7), (4, 6)]
+        expected = {
+            'fair': [(60, 1, tied_fair), (60, 1, [(4, 6)]), (60, 1, tied_fair)],
+            'garden': [(26, .6, [(4, 3)]), (26, 1.8, [(4, 3)]), (31, .6, [(4, 3)])],
+            'center': [(30, 1, [(3, 4)]), (30, 2.25, [(4, 3)]), (34, 1, [(3, 4)])],
+            'field': [(24, 2, [(3, 3)]), (24, 2.4, [(5, 1)]), (28, .4, [(3, 4)])],
+            'cards': [(26, 2.6, [(2, 4)]), (26, 3.6, [(6, 0)]), (32, 1.2, [(3, 4)])],
+        }
+        for part, levels in expected.items():
+            for level, (count, minimum, winners) in enumerate(levels):
+                with self.subTest(part=part, level=level):
+                    mission, limits, weights = settings(part, level)
+                    capacity = limits[mission.capacity_index]
+                    eligible = {}
+                    for x in range(capacity + 1):
+                        for y in range(capacity - x + 1):
+                            if all(x*r.x + y*r.y <= lim for r, lim in zip(mission.resources, limits)):
+                                eligible[x, y] = sum(Fraction(w * max(g.target - x*g.x - y*g.y, 0), g.scale)
+                                                     for g, w in zip(mission.goals, weights))
+                    optimum = min(eligible.values())
+                    self.assertEqual(len(eligible), count)
+                    self.assertEqual(float(optimum), minimum)
+                    self.assertEqual([p for p, score in eligible.items() if score == optimum], winners)
+                    full = solve(part, level)
+                    for frame in full['trace']:
+                        key = (frame['x'], frame['y'])
+                        self.assertEqual(frame['feasible'], key in eligible)
+                        self.assertEqual(frame['score'], float(eligible[key]) if key in eligible else None)
+
     def test_surpluses_have_no_negative_penalty(self):
         value, gap, penalty = goal_penalty(Goal('Test', 'u', 3, 2, 10, 4), 3, 4, 4)
         self.assertEqual((value, gap, penalty), (20, 0, 0))
@@ -34,8 +86,10 @@ class LessonTests(unittest.TestCase):
                 rows = solve(part, level, 'rows')
                 for name in ('winners', 'bestScore', 'feasibleCount', 'weights', 'limits'):
                     self.assertEqual(full[name], rows[name])
-                self.assertEqual(len(full['trace']), 81)
-                self.assertEqual(len(rows['trace']), 9)
+                capacity = {'fair': 10, 'garden': 7, 'center': 8, 'field': 7, 'cards': 8}[part]
+                self.assertEqual(full['maxCount'], capacity)
+                self.assertEqual(len(full['trace']), (capacity + 1) ** 2)
+                self.assertEqual(len(rows['trace']), capacity + 1)
                 for run in (full, rows):
                     best = None
                     for n, frame in enumerate(run['trace'], 1):
@@ -65,8 +119,8 @@ class ApiTests(unittest.TestCase):
         for bad in ('/api/solve?part=missing', '/api/solve?level=3',
                     '/api/solve?level=-1', '/api/solve?level=1.5', '/api/solve?level=',
                     '/api/solve?level=1&level=0', '/api/solve?q=1', '/api/solve?x',
-                    '/api/solve?method=other', '/api/step?x=0', '/api/step?x=9&y=1',
-                    '/api/chart.svg?step=0', '/api/chart.svg?method=rows&step=10',
+                    '/api/solve?method=other', '/api/step?x=0', '/api/step?x=11&y=1',
+                    '/api/chart.svg?step=0', '/api/chart.svg?method=rows&step=12',
                     '/api/chart.svg?lang=other'):
             self.assertEqual(response(bad)[0], 400, bad)
         self.assertEqual(response('/api/' + 'x' * 1100)[0], 414)
@@ -74,7 +128,7 @@ class ApiTests(unittest.TestCase):
 
     def test_chart_tracks_current_frame(self):
         svg_namespace = {'s': 'http://www.w3.org/2000/svg'}
-        for method, last in [('enumeration', 81), ('rows', 9)]:
+        for method, last in [('enumeration', 121), ('rows', 11)]:
             for n in (1, last):
                 status, kind, body = response('/api/chart.svg?method={}&step={}&lang=zh'.format(method, n))
                 self.assertEqual(status, 200)
@@ -128,6 +182,7 @@ process.stdout.write(JSON.stringify(records));
 """
         records = json.loads(subprocess.check_output(['node', '-e', program], cwd=str(root)))
         self.assertEqual(len(records), 15)
+        self.assertEqual(sum(len(r['candidates']) for r in records), 1233)
         for case in records:
             part, level = case['part'], case['level']
             full, bounded = solve(part, level), solve(part, level, 'rows')
@@ -137,6 +192,8 @@ process.stdout.write(JSON.stringify(records));
             self.assertAlmostEqual(full['bestScore'], case['minimum'])
             self.assertEqual(bounded['winners'], sorted(case['rowsWinners']))
             self.assertAlmostEqual(bounded['bestScore'], case['rowsMinimum'])
+            self.assertEqual(len(case['candidates']), len(full['trace']))
+            self.assertEqual(len(case['rows']), len(bounded['trace']))
             for frame, (x, y, bounds) in zip(bounded['trace'], case['rows']):
                 self.assertEqual((frame['x'], frame['y'], frame['bounds']),
                                  (x, y if y >= 0 else None, bounds))

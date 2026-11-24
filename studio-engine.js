@@ -2,8 +2,8 @@
 // The reference solver is used separately by the classroom test panel.
 const BlockEngine = (() => {
   const labels = {
-    loop:['For each pair (x, y) from 0 to 8','遍历 0 至 8 的每一对 (x, y)'],
-    shortLoop:['For each pair (x, y) from 0 to 7','遍历 0 至 7 的每一对 (x, y)'],
+    loop:['For each pair (x, y) from 0 to the scenario maximum','遍历从 0 到情景上限的每一对 (x, y)'],
+    shortLoop:['For each pair (x, y) from 0 to one below the scenario maximum','遍历从 0 到情景上限减一的每一对 (x, y)'],
     guard:['Skip if ANY resource is over its limit','若任一资源超限，跳过这个方案'],
     loose:['Skip if ALL resources are over their limits','若全部资源都超限，跳过这个方案'],
     gaps:['Set each gap to max(0, target − output)','把每个缺口设为 max(0, 目标 − 产出)'],
@@ -25,7 +25,9 @@ const BlockEngine = (() => {
   function execute(program,model,limits,weights){
     const result={best:null,winners:[],cases:{},error:null};
     if(!['loop','shortLoop'].includes(program[0])){result.error=['loop',1];return result;}
-    const max=program[0]==='loop'?8:7;
+    const models = typeof module === 'object' && module.exports ? require('./scenarios.js') : globalThis.QuestModels;
+    const limit = models.domainMax(model, limits);
+    const max = program[0] === 'loop' ? limit : limit - 1;
     for(let x=0;x<=max;x++)for(let y=0;y<=max;y++){
       const linear=a=>a.x*x+a.y*y;
       const costs=model.resources.map(linear);

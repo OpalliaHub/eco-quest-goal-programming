@@ -15,6 +15,7 @@
 
   const models = {
     fair: {
+      capacityIndex: 2,
       name: 'Eco Fair',
       title: 'Campus eco fair',
       theme: 'fair',
@@ -30,6 +31,8 @@
       goals: [goal('Funds', 'HKD', 30, 40, 360, 40), goal('Paper reuse', 'sheets', 20, 60, 480, 40)]
     },
     garden: {
+      capacityIndex: 2,
+      expandedPermit: 8,
       name: 'Berry Garden',
       title: 'A garden for two goals',
       theme: 'garden',
@@ -44,6 +47,7 @@
       goals: [goal('Harvest', 'crates', 5, 3, 32, 5), goal('Habitat', 'points', 1, 4, 16, 5)]
     },
     center: {
+      capacityIndex: 2,
       name: 'Center Supplies',
       title: 'Pokémon Center supplies',
       theme: 'center',
@@ -58,6 +62,7 @@
       goals: [goal('Center readiness', 'points', 4, 2, 24, 4), goal('Trail readiness', 'points', 1, 5, 22, 4)]
     },
     field: {
+      capacityIndex: 2,
       name: 'Field Survey',
       title: 'A survey of two habitats',
       theme: 'field',
@@ -72,6 +77,7 @@
       goals: [goal('Useful photos', 'photos', 5, 3, 28, 5), goal('Habitat coverage', 'points', 2, 5, 27, 5)]
     },
     cards: {
+      capacityIndex: 3,
       name: 'TCG Club',
       title: 'Pokémon TCG club deck planning',
       theme: 'cards',
@@ -91,13 +97,30 @@
   const defaults = (id) => models[id].resources.map(({ limit }) => limit);
   const dot = (entry, x, y) => entry.x * x + entry.y * y;
 
+  // Both choices use one unit of the capacity resource. The classroom traces
+  // include the entire square, so they can demonstrate rejected pairs too.
+  function domainMax(model, limits) {
+    const capacity = limits[model.capacityIndex];
+    const lessonMax = model.expandedPermit || model.resources[model.capacityIndex].limit;
+    if (capacity <= lessonMax) return capacity;
+    // A custom lab permit can reach 1,000. Outer rows beyond the maximum
+    // attainable quantity of either choice cannot contribute a feasible plan.
+    const axisMax = key => Math.min(...model.resources.map((r, i) =>
+      r[key] ? Math.floor(limits[i] / r[key]) : capacity));
+    return Math.max(lessonMax, axisMax('x'), axisMax('y'));
+  }
+
   function evaluate(model, x, y, limits, weights) {
     const resources = model.resources.map((entry) => dot(entry, x, y));
     const reasons = model.resources.filter((_, index) => resources[index] > limits[index]).map(({ name }) => name);
     const values = model.goals.map((entry) => dot(entry, x, y));
     const shortfalls = model.goals.map(({ target }, i) => Math.max(0, target - values[i]));
     const scaled = model.goals.map(({ scale }, i) => shortfalls[i] / scale);
-    const score = scaled[0] * weights[0] + scaled[1] * weights[1];
+    // With whole-number data, combine both fractions before dividing so a
+    // decimal such as 1.8 survives export as the same score as in Python.
+    const [first, second] = model.goals;
+    const score = (weights[0] * shortfalls[0] * second.scale +
+                   weights[1] * shortfalls[1] * first.scale) / (first.scale * second.scale);
     return { x, y, resources, reasons, values, shortfalls, scaled, score, feasible: reasons.length === 0 };
   }
 
@@ -110,6 +133,7 @@
     if (weights.length !== 2 || weights.some((n) => !Number.isInteger(n) || n < 0 || n > 20))
       throw new Error('Enter whole-number weights from 0 to 20.');
     if (weights.every((n) => n === 0)) throw new Error('At least one weight must be greater than zero.');
+    const maxCount = domainMax(model, limits);
     let candidates = [];
     if (id === 'fair') {
       const original = EcoFair.solve({
@@ -122,17 +146,17 @@
         score: plan.score, feasible: plan.feasible
       }));
     } else {
-      for (let x = 0; x <= 8; x++) {
-        for (let y = 0; y <= 8; y++) candidates.push(evaluate(model, x, y, limits, weights));
+      for (let x = 0; x <= maxCount; x++) {
+        for (let y = 0; y <= maxCount; y++) candidates.push(evaluate(model, x, y, limits, weights));
       }
     }
     const feasible = candidates.filter((plan) => plan.feasible);
-    const bestScore = Math.min(...feasible.map((plan) => plan.score));
+    const bestScore = feasible.reduce((best, plan) => Math.min(best, plan.score), Infinity);
     const winners = feasible.filter((plan) => Math.abs(plan.score - bestScore) <= 1e-9);
     return {
-      model, limits, weights, candidates, feasible, bestScore, winners,
+      model, limits, weights, maxCount, candidates, feasible, bestScore, winners,
       goalsJointlyAchievable: feasible.some((plan) => plan.shortfalls.every((gap) => gap === 0))
     };
   }
-  return { models, defaults, solve, evaluate };
+  return { models, defaults, domainMax, solve, evaluate };
 });

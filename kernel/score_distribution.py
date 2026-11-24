@@ -11,7 +11,7 @@ GROUP_BY_SCORE = Path(__file__).with_name('score_distribution.sql').read_text(en
 
 @lru_cache(maxsize=15)
 def score_distribution(part, level):
-    # Count all pairs even when the plot is displaying only nine row endpoints.
+    # Count all pairs even when the plot is displaying only the row endpoints.
     search = solve(part, level, 'enumeration')
     with closing(sqlite3.connect(':memory:')) as db:
         db.execute('CREATE TABLE candidates (x INTEGER, y INTEGER, score REAL)')

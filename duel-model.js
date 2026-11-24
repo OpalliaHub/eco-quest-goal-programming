@@ -106,7 +106,11 @@
     }
     const [x, y] = count(order);
     const plan = match.byPair.get(`${x},${y}`);
-    if (!plan) return { reason: `(${x}, ${y}) is outside the whole-number range 0–8.` };
+    if (!plan) {
+      const space = match.run.model.capacityIndex;
+      const capacity = match.run.model.resources[space];
+      return {reason: `${capacity.name} ${x + y} > ${match.run.limits[space]} ${capacity.unit}`};
+    }
     if (!plan.feasible) {
       const excess = match.run.model.resources.flatMap((resource, i) => {
         const limit = match.run.limits[i];

@@ -9,7 +9,7 @@ from socketserver import ThreadingMixIn
 from urllib.parse import parse_qsl, unquote, urlsplit
 
 from chart import score_chart
-from lesson_model import MAX_COUNT, MISSIONS, solve, step
+from lesson_model import MISSIONS, settings, solve, step
 from score_distribution import score_distribution
 
 JSON_TYPE = 'application/json; charset=utf-8'
@@ -87,8 +87,10 @@ def response(target, site=None):
             raise ValueError('Unknown mission.')
         level = integer(query.get('level', '0'), 'level', 0, 2)
         if route == 'step':
-            x = integer(query.get('x', ''), 'x', 0, MAX_COUNT)
-            y = integer(query.get('y', ''), 'y', 0, MAX_COUNT)
+            mission, limits, _ = settings(part, level)
+            max_count = limits[mission.capacity_index]
+            x = integer(query.get('x', ''), 'x', 0, max_count)
+            y = integer(query.get('y', ''), 'y', 0, max_count)
             return 200, JSON_TYPE, json_body(step(part, level, x, y))
         result = solve(part, level, query.get('method', 'enumeration'))
         if route == 'solve':

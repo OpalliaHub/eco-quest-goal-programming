@@ -1,14 +1,16 @@
 // For these missions, increasing y cannot increase any shortfall.
 // Bound each row using the resources, then recover any plateau at the minimum.
 function searchRows(model, limits, weights, evaluate) {
+  const models = typeof module === 'object' && module.exports ? require('./scenarios.js') : globalThis.QuestModels;
+  const maxCount = models.domainMax(model, limits);
   const rows = [];
-  for (let x = 0; x <= 8; x++) {
+  for (let x = 0; x <= maxCount; x++) {
     const bounds = model.resources.map((r, i) => {
       const remaining = limits[i] - r.x * x;
       if (remaining < 0) return -1;
-      return r.y ? Math.floor(remaining / r.y) : 8;
+      return r.y ? Math.floor(remaining / r.y) : maxCount;
     });
-    const y = Math.min(8, ...bounds);
+    const y = Math.min(maxCount, ...bounds);
     const point = y >= 0 ? evaluate(model, x, y, limits, weights) : null;
     rows.push({x, y, bounds, point});
   }

@@ -1,4 +1,4 @@
-function fullCodingStudio({host,part,level,result,t,term,el,button,compare}){
+function fullCodingStudio({host,part,level,result,t,term,el,button}){
   const key='ecoquest-blocks-v1-'+part+'-'+level;
   const lang=(pair)=>t(...pair);
   const label=id=>lang(BlockEngine.labels[id]);
@@ -56,11 +56,6 @@ function fullCodingStudio({host,part,level,result,t,term,el,button,compare}){
       const ref=result.candidates.find(p=>p.x===pair[0]&&p.y===pair[1]);
       el('p',result.model.resources.map((r,j)=>term(r.name)+' '+ref.resources[j]+'/'+result.limits[j]).join(' · '),trace);
       el('p',t('Expected','正确结果')+' '+(ref.feasible?'Z = '+Number(ref.score.toFixed(4)):t('Skip','跳过'))+' · '+t('Your output','实际输出')+' '+describe(state),trace);
-      const link=el('a',t('Compare this run on the 3D chart →','在 3D 图中对照本次运行 →'),trace,'first-cover-link');
-      link.href='#part/'+part+'/algorithm/'+pair[0]+'/'+pair[1];
-      link.onclick=()=>compare({x:pair[0],y:pair[1],score:state?.score??null,
-        late:!!(state?.skipped&&state.scored),
-        action:!state?'unvisited':state.skipped?'skip':state.score===null?'none':'score'});
       if(!state)return;
       const steps=state.steps;
       const reader=el('div',undefined,trace,'flow-reader');
@@ -214,7 +209,6 @@ function codingStudio(context) {
         el('p',t('Explain to your partner: which line stopped the first plan? Why did the second plan reach scoring?','请向同桌解释：第一组在哪一行停下？第二组为什么能继续打分？'),focus);
         const compare=el('a',t('Trace this pair in the reference search →','跟随参考算法查看这一组 →'),focus,'first-cover-link');
         compare.href='#part/'+part+'/algorithm/'+control.x+'/'+control.y;
-        compare.onclick=()=>context.compare({x:control.x,y:control.y,action:'score',score:second.output});
         action('Save my test record','保存本次测试记录',()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({part,level:level+1,lesson:'one-block',attempts:session.attempts},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='one-block-'+part+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
         action('Try again from the start','从头再做一遍',()=>{session=initial();session.full=false;guidedSessions.set(key,session);render();});
       }

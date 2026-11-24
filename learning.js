@@ -12,8 +12,6 @@
   const units = {HKD:'港元','person-hours':'人时',batches:'批',sheets:'张',L:'升',hours:'小时',beds:'块',crates:'箱',points:'分',units:'单位','time blocks':'时段',packs:'个',minutes:'分钟',rounds:'轮',photos:'张',cards:'张',boxes:'个'};
   const unit = value => language === 'zh' ? (units[value] || value) : value;
   let plan = [0, 0], prediction = '', reflection = '', submitted = false;
-  const branchPredictions=new Map();
-  let blockComparison=null;
   const names = {
     fair: ['Campus Eco Fair', '校园环保市集'], garden: ['Berry Garden', '树果园'],
     center: ['Pokémon Center Supplies', '宝可梦中心补给'], field: ['Field Survey', '野外调查'],
@@ -111,13 +109,7 @@
       if(part!==bits[1]) {part=bits[1];level=0;traceCompleted=false;plan=[0,0];prediction='';reflection='';submitted=false;}
       stage=stages[bits[2]]?bits[2]:'story';
     } else {screen='home';}
-    if(screen==='home' || stage!=='algorithm')blockComparison=null;
     render(); window.scrollTo({top:0,behavior:'instant'});
-    const pythonPanel=host.querySelector('[data-python-flow]');
-    if(pythonPanel && bits.length===5 && new URLSearchParams(location.search).get('inspect')==='python'){
-      pythonPanel.open=true;
-      requestAnimationFrame(()=>{if(pythonPanel.isConnected)pythonPanel.scrollIntoView({block:'start'});});
-    }
   }
   function cover() {
     const hero=el('section',undefined,host,'portal-cover');
@@ -139,7 +131,7 @@
     const background=el('div',undefined,host,'portal-background');
     el('h2',t('Welcome to the campus adventure','欢迎来到校园冒险计划'),background);
     el('p',t('Pikachu and friends are preparing a school eco festival. They need a fair, a berry garden, supplies, a field survey and a card club. You are the planner: decide how to share limited money, time and materials while helping everyone reach their goals.','皮卡丘和伙伴们正在筹备校园环保节：办市集、种树果、准备补给、调查自然，还有卡牌社团活动。你是小队的规划员，要分配有限的钱、时间与材料，帮助伙伴们尽量实现各自的目标。'),background);
-    el('p',t('Start with one mission. Plan on paper, repair a block and test it. In Watch the algorithm, follow that same plan on the 3D chart and step through the Python that scores it.','从一个任务开始：先手算一个方案，再修积木、做测试。在「观察算法」里，可以在 3D 图上找到同一组数量，逐行看 Python 怎样检查资源和算分。'),background);
+    el('p',t('Each part is independent. Meet the mission, plan by hand, build and test your own block program, compare searches, play a challenge and explain your revision. Choose one of three difficulty levels inside each part.','每个 Part 都可以独立进入。听故事、手算方案、搭建并测试自己的积木程序，再对照算法、参加对战、解释修改。进入后可选择基础、进阶或挑战难度。'),background);
     el('h2',t('Choose your next adventure','选择你的冒险 Part'),host);
     const cards=el('div',undefined,host,'portal-parts');
     const summaries={fair:['Make recycled paper products and balance fundraising with paper reuse.','制作再生纸产品，兼顾筹款和旧纸再利用。'],garden:['Allocate garden beds to balance berry harvest and habitat.','安排种植床，兼顾树果收成与栖息地。'],center:['Pack supplies for the center and the outdoor team.','分配补给包，兼顾中心准备度与野外需求。'],field:['Plan survey rounds for useful photos and habitat coverage.','安排调查轮次，兼顾有效照片与栖息地覆盖。'],cards:['Build practice decks, then try resource-aware card battles.','配置练习牌组，再体验考虑资源限制的卡牌对战。']};
@@ -166,8 +158,6 @@
   }
   let closeAlgorithm;
   function render() {
-    const restorePython=host.dataset.route===location.hash && host.querySelector('[data-python-flow]')?.open;
-    host.dataset.route=location.hash;
     closeAlgorithm?.();
     closeAlgorithm=undefined;
     host.replaceChildren();
@@ -253,29 +243,18 @@
       el('p',t('At least one unit is missing. Extra output beyond either target earns no credit. The row search finds every plan attaining this bound.','所以总缺口至少为 1，超出一项目标也不能抵消另一个缺口。用下一页的逐行定界找出所有达到 1 分的方案。'),hint);
     }
     stageMarker('code');
-    if(stage==='code')codingStudio({host,part,level,result,t,term,unit,math,products:products[part],el,button,
-      compare:record=>{blockComparison={...record,part,level};}});
+    if(stage==='code')codingStudio({host,part,level,result,t,term,unit,math,products:products[part],el,button});
     stageMarker('algorithm');
     if(stage==='algorithm'){
       const pair=location.hash.split('/').slice(3);
       const initialPair=pair.length===2 && pair.every(n=>/^\d+$/.test(n) && Number(n)<=result.maxCount) ? pair.map(Number) : null;
-      const axisLabels=model.products.map((name,i)=>t(name,products[part][i]));
-      const comparison=blockComparison?.part===part && blockComparison.level===level ? blockComparison:null;
-      const key=part+'-'+level;
-      closeAlgorithm=optimizationLab({host,part,level,initialPair,model,result,axisLabels,comparison,t,term,unit,el,button,math,
-        onComplete:()=>{traceCompleted=true;},
-        onPrediction:record=>{
-          if(!branchPredictions.has(key))branchPredictions.set(key,[]);
-          branchPredictions.get(key).push(record);
-        }});
-      if(restorePython)host.querySelector('[data-python-flow]').open=true;
+      closeAlgorithm=optimizationLab({host,part,level,initialPair,model,result,t,term,unit,el,button,math,onComplete:()=>{traceCompleted=true;}});
     }
     stageMarker('reflect');
     const reflectionLabel=el('label',t('Explain your decision, the weights and a modelling limitation','解释你的决策、目标权重和一项模型局限'),host);
     const notes=el('textarea',undefined,reflectionLabel);notes.value=reflection;notes.oninput=()=>{reflection=notes.value;};
     button(t('Download this mission evidence','下载本题学习记录'),()=>{
-      const record={part,level:level+1,settings:settings(),prediction,plan,score:chosen.score,reflection,traceCompleted,
-        searchPredictions:branchPredictions.get(part+'-'+level) || []};
+      const record={part,level:level+1,settings:settings(),prediction,plan,score:chosen.score,reflection,traceCompleted};
       const url=URL.createObjectURL(new Blob([JSON.stringify(record,null,2)],{type:'application/json'}));
       const a=el('a');a.href=url;a.download=`ecoquest-${part}-${level+1}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     },host);

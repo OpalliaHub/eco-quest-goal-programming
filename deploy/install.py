@@ -25,8 +25,12 @@ NGINX = '/usr/sbin/nginx'
 VHOST = Path('/etc/blue-hour-nginx.conf')
 SERVICE = UNIT.name
 CHECKPOINTS = Path('/var/backups/eco-quest-kernel')
-FRONT = ['index.html', 'learning.js', 'learning.css', 'optimization.js', 'studio.js',
-         'classroom/eco-quest-presentation.pptx', 'classroom/eco-quest-presentation.pdf']
+# Install the solver, interpreter, teaching pages and their assets from the
+# same revision. Updating only the view can leave an older solver in service.
+FRONT = sorted(path.name for path in SOURCE.iterdir()
+               if path.is_file() and path.suffix in ('.html', '.js', '.css'))
+FRONT += sorted(str(path.relative_to(SOURCE)) for path in (SOURCE / 'assets').glob('*.png'))
+FRONT += ['classroom/eco-quest-presentation.pptx', 'classroom/eco-quest-presentation.pdf']
 KERNEL = ['lesson_model.py', 'score_distribution.py', 'score_distribution.sql', 'chart.py', 'server.py']
 PUBLIC = ['kernel/lesson_model.py', 'kernel/score_distribution.sql']
 INCLUDE = 'include /opt/eco-quest-kernel/current/location.conf;'

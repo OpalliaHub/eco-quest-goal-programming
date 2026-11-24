@@ -5,24 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Plan a school eco fair in five Pokémon-themed planning scenarios. Explore hard limits, weighted goals and optimal plans.">
   <title>Eco Quest | Pokémon Goal Programming Lab</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=capacity-1">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <script src="vendor/katex/katex.min.js" defer></script>
-  <script src="row-search.js" defer></script>
-  <script src="optimization.js?v=python-model" defer></script>
-  <script src="solver.js" defer></script>
-  <script src="scenarios.js" defer></script>
-  <script src="duel-model.js" defer></script>
-  <script src="duel-ui.js" defer></script>
+  <script src="row-search.js?v=capacity-1" defer></script>
+  <script src="optimization.js?v=capacity-1" defer></script>
+  <script src="solver.js?v=capacity-1" defer></script>
+  <script src="scenarios.js?v=capacity-1" defer></script>
+  <script src="duel-model.js?v=capacity-1" defer></script>
+  <script src="duel-ui.js?v=capacity-1" defer></script>
   <script src="battle-model.js" defer></script>
-  <script src="app.js" defer></script>
-  <script src="battle.js" defer></script>
-  <script src="locale.js" defer></script>
+  <script src="app.js?v=capacity-1" defer></script>
+  <script src="battle.js?v=capacity-1" defer></script>
+  <script src="locale.js?v=capacity-1" defer></script>
   <script src="stories.js" defer></script>
-  <script src="studio-engine.js?v=guard-order" defer></script>
+  <script src="studio-engine.js?v=capacity-1" defer></script>
   <script src="flow.js?v=flow-1" defer></script>
-  <script src="studio.js?v=python-model" defer></script>
-  <script src="learning.js?v=python-model" defer></script>
+  <script src="studio.js?v=capacity-1" defer></script>
+  <script src="learning.js?v=capacity-1" defer></script>
   <link rel="stylesheet" href="learning.css?v=python-model">
 </head>
 <body>
@@ -87,7 +87,7 @@
           </form>
           <form id="lab-form" hidden>
             <div class="lab-inputs" id="lab-inputs"></div>
-            <button class="button primary" type="submit">Run all 81 plans <span aria-hidden="true">→</span></button>
+            <button class="button primary" type="submit">Run the search <span aria-hidden="true">→</span></button>
           </form>
           <p id="feedback" class="feedback" role="status" hidden></p>
         </div>
@@ -114,8 +114,8 @@
               <h4>Predict your plan</h4>
               <p>Pick two counts and a resource to check.</p>
               <div class="arena-inputs">
-                <label for="arena-x">Predicted x<input id="arena-x" type="number" min="0" max="8" step="1" required></label>
-                <label for="arena-y">Predicted y<input id="arena-y" type="number" min="0" max="8" step="1" required></label>
+                <label for="arena-x">Predicted x<input id="arena-x" type="number" min="0" step="1" required></label>
+                <label for="arena-y">Predicted y<input id="arena-y" type="number" min="0" step="1" required></label>
               </div>
               <label for="arena-reason">Your constraint check</label>
               <select id="arena-reason"></select><p id="arena-preview"></p>
@@ -175,6 +175,7 @@
         <div class="result-layout">
           <div>
             <p class="axis-y" id="axis-y"></p>
+            <div id="grid-pages"></div>
             <div class="plan-grid" id="grid" role="group" aria-label="Plan map. Use arrow keys to move between plans."></div>
             <p class="axis-x" id="axis-x"></p>
             <ul class="legend" aria-label="Plan map legend">
@@ -233,8 +234,8 @@
           <button class="button outline" type="button" id="battle-reset">Restart</button>
         </div>
         <p class="battle-costs"><strong>Charge:</strong> 1 Lightning. It attaches Lightning from the deck. <strong>Pika Punch:</strong> 2 Lightning plus 1 Energy of any type, 50 damage. Bulbasaur has the Energy for Leech Seed, which deals 20 and heals up to 20.</p>
-        <p class="feedback" id="battle-message" role="status">Predict which move gives Pikachu enough Energy to attack on turn 2.</p>
-        <details><summary>Turn log and drill rules</summary><ol id="battle-log"></ol><p>The setup fixes the hand and reserves. The drill omits draws, Bench, Prize cards and Weakness. Attached Energy stays attached after these attacks. Compare a win that preserves Water with a win that uses it.</p></details>
+        <p class="feedback" id="battle-message" role="status">Predict which resources you will need for the first Pika Punch.</p>
+        <details><summary>Turn log and drill rules</summary><ol id="battle-log"></ol><p>The setup fixes the hand and reserves. The drill omits draws, Bench, Prize cards and Weakness. Attached Energy stays attached after these attacks. Compare your final HP and Water against both targets.</p></details>
       </section>
     </section>
 

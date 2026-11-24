@@ -6,9 +6,9 @@
   try { language = localStorage.getItem('ecoquest-language') || 'zh'; } catch (_) {}
   const requestedLanguage=new URLSearchParams(location.search).get('lang');
   if (['en','zh'].includes(requestedLanguage)) language=requestedLanguage;
-  let part = 'fair', level = 0, step = 0, phase = 0, timer;
+  let part = 'fair', level = 0, traceCompleted = false;
   let screen = 'home', stage = 'story', activeDuelPart = null;
-  let showMath = false, introAnswer = '', introOpen = true;
+  let introAnswer = '', introOpen = true;
   const units = {HKD:'港元','person-hours':'人时',batches:'批',sheets:'张',L:'升',hours:'小时',beds:'块',crates:'箱',points:'分',units:'单位','time blocks':'时段',packs:'个',minutes:'分钟',rounds:'轮',photos:'张',cards:'张',boxes:'个'};
   const unit = value => language === 'zh' ? (units[value] || value) : value;
   let plan = [0, 0], prediction = '', reflection = '', submitted = false;
@@ -51,14 +51,7 @@
     return QuestModels.solve(part, s.limits, s.weights);
   }
   function reset() {
-    clearInterval(timer); timer = undefined;
-    showMath = false; step = 0; phase = 0; plan = [0, 0]; prediction = ''; reflection = ''; submitted = false;
-    render();
-  }
-  function next() {
-    if (phase < 3) phase++;
-    else if (step < 80) { step++; phase = 0; }
-    else { clearInterval(timer); timer = undefined; }
+    traceCompleted = false; plan = [0, 0]; prediction = ''; reflection = ''; submitted = false;
     render();
   }
   function introduction() {
@@ -111,10 +104,9 @@
   }
   function route() {
     const bits = location.hash.slice(1).split('/');
-    clearInterval(timer); timer=undefined;
     if(bits[0]==='part' && names[bits[1]]) {
       screen='part';
-      if(part!==bits[1]) {part=bits[1];level=0;step=0;phase=0;plan=[0,0];prediction='';reflection='';submitted=false;}
+      if(part!==bits[1]) {part=bits[1];level=0;traceCompleted=false;plan=[0,0];prediction='';reflection='';submitted=false;}
       stage=stages[bits[2]]?bits[2]:'story';
     } else {screen='home';}
     render(); window.scrollTo({top:0,behavior:'instant'});
@@ -206,7 +198,7 @@
     storyScene(model, chosen, result);
     el('h3', t(...names[part]) + ' — ' + t('Mission ', '任务 ') + (level + 1), host);
     el('p', level === 0 ? t('Find a feasible plan with the smallest total weighted shortfall. Explain whether both targets can be met.', '寻找加权偏差总和最小的可行方案，说明两个目标能否同时达成。') : level === 1 ? t('Goal 1 now has weight 3. Predict whether the best plan changes. Explain why the feasible set stays the same.', '目标一的权重变为 3。预测最优方案是否变化，并解释为什么可行域保持相同。') : t('The first editable resource has been increased by 20%, rounded up. Compare the best score with the original resources. Is this resource the bottleneck?', '第一个可调整资源增加 20% 并向上取整。与原资源下的最优分数比较，这项资源是否为瓶颈？'), host);
-    el('p', t('Decision variables: ', '决策变量：') + ['x', 'y'].map((v, i) => `${v} = ${language === 'zh' ? products[part][i] : model.products[i]}`).join('；') + t('. Both are integers from 0 to 8.', '。两者均为 0 至 8 的整数。'), host);
+    el('p', t('Decision variables: ', '决策变量：') + ['x', 'y'].map((v, i) => `${v} = ${language === 'zh' ? products[part][i] : model.products[i]}`).join(t('; ', '；')) + t('. Both are nonnegative whole numbers. The shared capacity is ', '。两者均为非负整数，共用的容量为 ') + result.maxCount + ' ' + unit(model.resources[model.capacityIndex].unit) + t('. Other resource limits also apply.', '。还需满足其余资源限制。'), host);
     stageMarker('build');
     const modelDetails = el('details', undefined, host, 'story-intro');
     modelDetails.open=true;
@@ -219,10 +211,10 @@
     });
     model.goals.forEach((g,i)=>{el('small',term(g.name)+' · '+unit(g.unit),modelDetails);math(modelDetails,'g_{'+(i+1)+'}='+g.x+'x+'+g.y+'y,\\quad T_{'+(i+1)+'}='+g.target);});
     el('p', t('All quantities are fictional classroom data. We penalise only shortfalls; exceeding a target carries no penalty.', '所有数值均为课堂假设。本模型只惩罚未达到目标的负偏差，超过目标不罚分。'), host);
-    el('p',t('Choose the two batch counts below. Before checking, point to the resource closest to its limit.','用下方按钮选择两种数量。检查前，先指出哪项资源最接近上限。'),host);
+    el('p',t('Choose the two quantities below. Before checking, point to the resource closest to its limit.','用下方按钮选择两种数量。检查前，先指出哪项资源最接近上限。'),host);
     const actions = el('div', undefined, host, 'learn-controls');
     for (let i = 0; i < 2; i++) {
-      button(`${t('Add','增加')} ${language==='zh'?products[part][i]:model.products[i]} (+${i===0?'x':'y'})`, () => { plan[i]++; submitted = false; render(); }, actions, plan[i] >= 8 || !result.candidates.find(p => p.x === plan[0]+(i===0?1:0) && p.y === plan[1]+(i===1?1:0))?.feasible);
+      button(`${t('Add','增加')} ${language==='zh'?products[part][i]:model.products[i]} (+${i===0?'x':'y'})`, () => { plan[i]++; submitted = false; render(); }, actions, !result.candidates.find(p => p.x === plan[0]+(i===0?1:0) && p.y === plan[1]+(i===1?1:0))?.feasible);
       button(`− ${i === 0 ? 'x' : 'y'}`, () => { plan[i]--; submitted = false; render(); }, actions, plan[i] === 0);
     }
     el('p', `${t('Your plan','你的方案')} (${plan.join(', ')}) · Z = ${n(chosen.score)}`, host);
@@ -234,6 +226,12 @@
     button(t('Check my plan','检查我的方案'), () => { prediction = plan.join(', '); submitted = true; render(); }, actions);
     if (submitted) el('p', (Math.abs(chosen.score-result.bestScore)<1e-9 ? t('Optimal! Explain the remaining shortfalls and any tied plans.','达到最优！请解释剩余偏差及并列最优方案。') : t('Feasible, but a lower score is possible. Use the walkthrough to find a better plan.','方案可行，但存在更低分数。使用下方演示寻找更好的方案。')), host, 'learn-feedback');
     if(part==='fair' && level===0){
+      const boundary=el('details',undefined,host,'story-intro');
+      el('summary',t('Can the stall display ten batches of bookmarks?', '摊位可以只摆 10 批书签吗？'),boundary);
+      el('p',t('Yes. Try (10, 0): ten batches occupy all ten spaces. They cost HKD 200, take ten person-hours and use 200 sheets. They earn HKD 300. The plan fits every limit, so it reaches scoring.', '可以。试试 (10, 0)：十批书签正好占满十个位置，成本 200 港元、工时 10 人时、用纸 200 张，筹款盈余为 300 港元。每项资源都够用，所以可以打分。'),boundary);
+      math(boundary,'Z=\\frac{360-300}{40}+\\frac{480-200}{40}=8.5');
+      const see=el('a',t('Trace (10, 0) in the search →','在搜索中查看 (10, 0) →'),boundary);
+      see.href='#part/fair/algorithm/10/0';
       const hint=el('details',undefined,host,'story-intro');
       el('summary',t('Try this by hand: can you beat one point?','纸笔挑战：有没有比 1 分更好的方案？'),hint);
       el('p',t('Fix two bookmark batches. They use two of sixteen hours. Fourteen hours remain, and each notebook batch needs two. Try seven notebook batches.','先做两批书签，占去 16 小时中的 2 小时。还剩 14 小时，每批笔记本要 2 小时，试做 7 批。'),hint);
@@ -249,14 +247,14 @@
     stageMarker('algorithm');
     if(stage==='algorithm'){
       const pair=location.hash.split('/').slice(3);
-      const initialPair=pair.length===2 && pair.every(n=>/^[0-8]$/.test(n)) ? pair.map(Number) : null;
-      closeAlgorithm=optimizationLab({host,part,level,initialPair,model,result,t,term,unit,el,button,math,onComplete:()=>{step=80;phase=3;}});
+      const initialPair=pair.length===2 && pair.every(n=>/^\d+$/.test(n) && Number(n)<=result.maxCount) ? pair.map(Number) : null;
+      closeAlgorithm=optimizationLab({host,part,level,initialPair,model,result,t,term,unit,el,button,math,onComplete:()=>{traceCompleted=true;}});
     }
     stageMarker('reflect');
     const reflectionLabel=el('label',t('Explain your decision, the weights and a modelling limitation','解释你的决策、目标权重和一项模型局限'),host);
     const notes=el('textarea',undefined,reflectionLabel);notes.value=reflection;notes.oninput=()=>{reflection=notes.value;};
     button(t('Download this mission evidence','下载本题学习记录'),()=>{
-      const record={part,level:level+1,settings:settings(),prediction,plan,score:chosen.score,reflection,traceCompleted:step===80&&phase===3};
+      const record={part,level:level+1,settings:settings(),prediction,plan,score:chosen.score,reflection,traceCompleted};
       const url=URL.createObjectURL(new Blob([JSON.stringify(record,null,2)],{type:'application/json'}));
       const a=el('a');a.href=url;a.download=`ecoquest-${part}-${level+1}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     },host);

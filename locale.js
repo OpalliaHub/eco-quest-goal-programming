@@ -19,7 +19,6 @@
     'Pick two counts and a resource to check.':'选择两种数量，再选一项资源进行检验。','Make a prediction':'先作预测','Test prediction':'检验预测','Display space':'陈列空间','Budget':'预算','Production effort':'制作工时','Paper stock':'纸张库存','Cost':'费用','Funds':'筹款盈余','Paper reuse':'纸张再利用',
     'PLAN FIRST':'先作规划','PARTNER ARENA':'伙伴对战区','Stall Showdown':'市集摊位对战','Berry Bed Clash':'树果种植对战','Supply Draft':'补给包规划对战','Survey Route Duel':'调查路线对战',
     'Scenario setting':'情景条件','Original stall':'原始摊位','More budget and effort':'增加预算和工时','Resource limits and goal equations':'资源约束与目标方程','Predict your plan':'预测你的方案','Predicted x':'预测 x','Predicted y':'预测 y','Your constraint check':'你的约束检验',
-    'Choose whole numbers from 0 to 8. Write one constraint check before making a move.':'选择 0 至 8 的整数。行动前先写一项约束检验。',
     'Start duel':'开始对战','Return to setup':'返回设置','Make bookmarks':'制作书签','Make notebooks':'制作笔记本','Build a mixed bundle':'制作混合组合','Your plan':'你的方案','Turn trace':'回合记录',
     'MATH GUIDE':'数学指南','What makes a good plan?':'什么是好方案？','Check limits, then score goals':'先检查约束，再计算目标分数','Fictional quantities per unit':'每单位的课堂假设数据','Measure':'项目','Limit or target':'上限或目标',
     'TRAINER JOURNAL':'训练家日志','Defend your recommendation':'解释你的推荐方案','Your explanation':'你的解释','Download field notes':'下载学习记录',
@@ -87,7 +86,6 @@
   "bookmark": "书签",
   "notebook": "笔记本",
   "counts": "表示数量",
-  "Choose whole numbers from 0 to 8.": "请选择 0 到 8 的整数。",
   "Care time": "照料时间",
   "Garden space": "种植空间",
   "Harvest": "收成",
@@ -119,6 +117,12 @@
   "Clamp each gap at zero.": "负的差额按零计算。",
   "gap": "差额"
 });
+  Object.assign(dictionary, {
+    'Use nonnegative whole numbers.':'取非负整数。','Run the search':'搜索全部方案',
+    'Predict which resources you will need for the first Pika Punch.':'预测首次使出皮卡拳需要哪些能量。',
+    'The last attack needs the Water Energy: every winning line has a Water shortfall of 1.':'发动攻击必须使用水能量：每种获胜路线都缺少 1 张留在手中的水能量。',
+    'The setup fixes the hand and reserves. The drill omits draws, Bench, Prize cards and Weakness. Attached Energy stays attached after these attacks. Compare your final HP and Water against both targets.':'本练习使用固定的手牌和备用能量，仅模拟附能、攻击、伤害与治疗。攻击后能量仍附在宝可梦身上。比较最终 HP 和手中水能量与两个目标的差距。'
+  });
   const originals = new WeakMap();
   let chinese = false;
   const replacements = Object.entries(dictionary).sort((a,b)=>b[0].length-a[0].length);
@@ -132,9 +136,10 @@
       const original = prior && node.data === prior.output ? prior.original : node.data;
       let output = original;
       if (chinese) {
-        const exact = dictionary[original.trim()];
+        const gardenWater = !node.parentElement.closest('#battle') && /\bWater\b/.test(original) && !original.includes('Water Energy');
+        const exact = gardenWater && original.trim()==='Water' ? '灌溉用水' : dictionary[original.trim()];
         if (exact) output = original.replace(original.trim(),exact);
-        else for (const [english,zh] of replacements) output = output.split(english).join(zh);
+        else for (const [english,zh] of replacements) output = output.split(english).join(english==='Water' && gardenWater ? '灌溉用水' : zh);
       }
       if(node.data !== output) node.data = output;
       originals.set(node,{original,output});

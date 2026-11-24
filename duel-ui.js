@@ -32,14 +32,20 @@
     const preset = arena.presets[Number(ui.preset.value)];
     const limits = preset.limits || QuestModels.defaults(activeId);
     const weights = preset.weights || [1, 1];
-    el('arena-variables').textContent = `x = ${model.products[0].toLowerCase()}, y = ${model.products[1].toLowerCase()}.`;
+    const maxCount=QuestModels.domainMax(model,limits);
+    el('arena-x').max=maxCount;
+    el('arena-y').max=maxCount;
+    el('arena-variables').textContent = `x = ${model.products[0].toLowerCase()}, y = ${model.products[1].toLowerCase()}. 0 ≤ x, y ≤ ${maxCount}; x + y ≤ ${limits[model.capacityIndex]}.`;
     const equations = el('arena-equations');
     equations.replaceChildren();
     for (const [i,r] of [...model.resources,...model.goals].entries()) {
       const line=node('li',r.name+' ('+r.unit+') ');
       const span=document.createElement('span');
       const isLimit=i<model.resources.length;
-      katex.render(expression(r)+(isLimit?'\\le '+limits[i]:'\\ge '+r.target),span);
+      const targetIndex=i-model.resources.length+1;
+      const equation=isLimit ? expression(r)+'\\le '+limits[i]
+        : 'g_{'+targetIndex+'}='+expression(r)+',\\quad d_{'+targetIndex+'}^{-}=\\max(0,'+r.target+'-g_{'+targetIndex+'})';
+      katex.render(equation,span);
       line.append(span);equations.append(line);
     }
     katex.render('Z='+model.goals.map((g,i)=>weights[i]+'\\frac{d_{'+(i+1)+'}^{-}}{'+g.scale+'}').join('+'),el('arena-score-rule'));
@@ -95,7 +101,7 @@
 
   function renderRound() {
     const { arena, order, player, rival, run, turn } = match;
-    const slotLimit = run.limits[2];
+    const slotLimit = run.limits[run.model.capacityIndex];
     const visibleSlots = arena.palette === 'garden' ? 8 : slotLimit;
     const labels = { x: arena.tokens[0], y: arena.tokens[1] };
     el('arena-board').replaceChildren(...Array.from({ length: visibleSlots }, (_, i) => {
@@ -243,7 +249,7 @@
     renderRound();
     ui.finish.hidden = false;
     el('arena-verdict').textContent = `${outcome} · ${optimal ? 'Mathematically optimal' : 'Feasible plan'}`;
-    const proof = `You locked ${pair(player)} at ${number(player.score)}. Rival ${pair(rival)} scored ${number(rival.score)}. Checking all 81 pairs gives minimum ${number(match.run.bestScore)} at ${match.run.winners.map(pair).join(', ')}.`;
+    const proof = `You locked ${pair(player)} at ${number(player.score)}. Rival ${pair(rival)} scored ${number(rival.score)}. Checking all ${match.run.candidates.length} pairs gives minimum ${number(match.run.bestScore)} at ${match.run.winners.map(pair).join(', ')}.`;
     el('arena-proof').textContent = proof;
     el('arena-prompt').textContent = match.arena.prompt;
     el('arena-reflection').value = '';

@@ -53,7 +53,7 @@ const missions = {
     startPlan: (run, answer) => run.candidates.find(({ x, y }) => [x, y].join(',') === answer),
     check: (answer, run) => ({
       correct: run.winners.length === 1 && [run.winners[0].x, run.winners[0].y].join(',') === answer,
-      detail: 'Plan (4, 6) meets the funds goal and misses paper by 40 sheets. The three scores are 3, 2 and 1 in the order shown. All 57 feasible plans remain feasible.'
+      detail: `Plan (4, 6) meets the funds goal and misses paper by 40 sheets. The three scores are 3, 2 and 1 in the order shown. All ${run.feasible.length} feasible plans remain feasible.`
     })
   },
   resources: {
@@ -294,6 +294,13 @@ function inputField(id, label, value, max, fixed = false) {
   return field;
 }
 
+function showVariables(model,limits) {
+  const cap=limits[model.capacityIndex], max=QuestModels.domainMax(model,limits);
+  const descriptions=[`x = ${model.products[0]}, y = ${model.products[1]}.`, `x + y ≤ ${cap}.`];
+  if(max<cap)descriptions.push(`Together the resource limits imply x, y ≤ ${max}.`);
+  $('variables').textContent=descriptions.join(' ');
+}
+
 function showModule(id) {
   moduleId = id;
   const model = modelFor();
@@ -308,7 +315,7 @@ function showModule(id) {
   $('axis-y').textContent = `↑ ${model.products[1]} (y)`;
   $('axis-x').textContent = `${model.products[0]} (x) →`;
   $('model-heading').textContent = model.title;
-  $('variables').textContent = `x counts ${model.products[0].toLowerCase()}. y counts ${model.products[1].toLowerCase()}. Choose whole numbers from 0 to 8.`;
+  showVariables(model,QuestModels.defaults(id));
   $('model-notes').textContent = model.detail;
   katex.render('Z='+model.goals.map((g,i)=>'w_{'+(i+1)+'}\\frac{d_{'+(i+1)+'}^{-}}{'+g.scale+'}').join('+'),$('formula'));
   const table = $('data-table');
@@ -360,6 +367,7 @@ function inspect(plan, focus = false) {
     selection.tabIndex = -1;
     selection.setAttribute('aria-pressed', 'false');
   }
+  if(!planCells.has(`${plan.x},${plan.y}`)) drawGrid(currentRun,plan);
   selection = planCells.get(`${plan.x},${plan.y}`);
   selection.tabIndex = 0;
   selection.setAttribute('aria-pressed', 'true');
@@ -403,15 +411,36 @@ $('encounter-play').addEventListener('click', () => {
   encounterTimer = setTimeout(() => scene.classList.remove('play'), 670);
 });
 
-function drawGrid(run) {
+function drawGrid(run,plan) {
+  const side=12;
+  const startX=Math.floor(plan.x/side)*side, startY=Math.floor(plan.y/side)*side;
+  const endX=Math.min(startX+side-1,run.maxCount), endY=Math.min(startY+side-1,run.maxCount);
+  $('grid').style.setProperty('--plan-columns',endX-startX+1);
+  const pages=$('grid-pages');
+  pages.replaceChildren();
+  if(run.maxCount>=side){
+    for(const [axis,start] of [['x',startX],['y',startY]]){
+      const label=make('label',axis+' ');
+      const select=make('select');
+      for(let k=0;k<=run.maxCount;k+=side){const opt=make('option',k+'–'+Math.min(k+side-1,run.maxCount));opt.value=k;select.append(opt);}
+      select.value=start;
+      select.addEventListener('change',()=>{
+        const x=axis==='x'?Number(select.value):selectedPlan.x;
+        const y=axis==='y'?Number(select.value):selectedPlan.y;
+        const next=run.candidates.find(p=>p.x===x && p.y===y);
+        if(next)inspect(next,true);
+      });
+      label.append(select);pages.append(label);
+    }
+  }
   const cells = [];
   const lookup = new Map(run.candidates.map((plan) => [`${plan.x},${plan.y}`, plan]));
   const movement = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
   planCells = new Map();
   selection = undefined;
-  for (let y = 8; y >= 0; y--) {
+  for (let y = endY; y >= startY; y--) {
     cells.push(make('span', y, 'grid-label'));
-    for (let x = 0; x <= 8; x++) {
+    for (let x = startX; x <= endX; x++) {
       const key = `${x},${y}`;
       const plan = lookup.get(key);
       const optimal = isOptimal(run, plan);
@@ -436,12 +465,13 @@ function drawGrid(run) {
     }
   }
   cells.push(make('span', '', 'grid-label'));
-  for (let x = 0; x <= 8; x++) cells.push(make('span', x, 'grid-label'));
+  for (let x = startX; x <= endX; x++) cells.push(make('span', x, 'grid-label'));
   $('grid').replaceChildren(...cells);
 }
 
 function renderResults(run, plan) {
   currentRun = run;
+  showVariables(run.model,run.limits);
   $('results').hidden = false;
   $('run-settings').textContent = scenario(run);
   const stats = [
@@ -454,7 +484,7 @@ function renderResults(run, plan) {
     box.append(make('strong', value), make('span', label));
     return box;
   }));
-  drawGrid(run);
+  drawGrid(run,plan);
   $('ties').replaceChildren(...run.winners.map((winner) => {
     const button = make('button', coordinates(winner));
     button.type = 'button';
@@ -464,8 +494,10 @@ function renderResults(run, plan) {
   inspect(plan);
   const mapLink = make('a', 'View plan map ↓');
   mapLink.href = '#results';
+  mapLink.onclick=event=>{event.preventDefault();$('results').scrollIntoView();};
   const trialLink = make('a', moduleId === 'cards' ? 'Partner trial ↓' : 'Play the planning duel ↑');
-  trialLink.href = moduleId === 'cards' ? '#encounter' : '#arena';
+  trialLink.href = moduleId === 'cards' ? '#battle' : '#arena';
+  trialLink.onclick=event=>{event.preventDefault();document.querySelector(trialLink.hash).scrollIntoView();};
   $('feedback').append(document.createTextNode(' '), mapLink, document.createTextNode(' · '), trialLink);
 }
 
@@ -501,7 +533,7 @@ $('lab-form').addEventListener('submit', (event) => {
     const run = QuestModels.solve(moduleId, limits, weights);
     journal.lastLab = `${modelFor().name}. ${evidence(run)}`;
     saveJournal();
-    feedback('All 81 plans checked. Select a square to inspect the calculation.');
+    feedback(`Checked ${run.candidates.length} pairs. Select a square to inspect the calculation.`);
     renderResults(run, run.winners[0]);
   } catch (error) {
     hideOutput();

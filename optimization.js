@@ -27,12 +27,12 @@ function optimizationLab({host, part, level, initialPair, model, result, t, term
   const quantities = ['x','y'].map((name,i) => {
     const field = el('label', name+' ', picks);
     const select = el('select', undefined, field);
-    for (let n=0;n<=8;n++) el('option', String(n), select);
+    for (let n=0;n<=result.maxCount;n++) el('option', String(n), select);
     select.value=initialPair?.[i] ?? (part==='fair' ? [2,7][i] : 0);
     return select;
   });
   button(t('Find this pair in the search','在搜索中查看这一组'), () => {
-    const target=9*Number(quantities[0].value)+Number(quantities[1].value);
+    const target=(result.maxCount+1)*Number(quantities[0].value)+Number(quantities[1].value);
     if (method.value==='enumeration') move(target);
     else { method.value='enumeration'; loadMethod(target); }
   }, picks);
@@ -119,7 +119,7 @@ function optimizationLab({host, part, level, initialPair, model, result, t, term
       if(!payload){
         payload=await get(query('solve',{method:name}));
         if(payload.part!==part || payload.level!==level || payload.method!==name ||
-           payload.trace?.length!==(name==='rows'?9:81) || !Array.isArray(payload.winners))throw Error('Unexpected model response');
+           payload.trace?.length!==(name==='rows'?result.maxCount+1:result.candidates.length) || !Array.isArray(payload.winners))throw Error('Unexpected model response');
         cache.set(name,payload);
       }
       if(!alive(token))return;
@@ -151,7 +151,8 @@ function optimizationLab({host, part, level, initialPair, model, result, t, term
     for(const n of [0,high])shape('text',{x:4,y:Y(n)+4,'font-size':12},fmt(n));
     shape('text',{x:35,y:145,'font-size':12},'1');shape('text',{x:415,y:145,'font-size':12},trace.length);
     shape('text',{x:205,y:145,'font-size':12},t('Step','步骤'));
-    shape('polyline',{points:seen.map((p,i)=>p.bestSoFar==null?'':X(i)+','+Y(p.bestSoFar)).filter(Boolean).join(' '),fill:'none',stroke:'#087269','stroke-width':3});
+    const path=seen.flatMap((p,i)=>p.bestSoFar==null?[]:[(i?'H'+X(i)+'V':'M'+X(i)+',')+Y(p.bestSoFar)]).join(' ');
+    shape('path',{d:path,fill:'none',stroke:'#087269','stroke-width':3});
     seen.forEach((p,i)=>{if(p.feasible)shape('circle',{cx:X(i),cy:Y(p.score),r:3,fill:'#a75018'});});
   }
   function paintMath(frame,detail){
@@ -160,8 +161,8 @@ function optimizationLab({host, part, level, initialPair, model, result, t, term
       if(frame.y===null){el('p',t('Even y = 0 breaks a resource limit in this row.','取 y = 0 时，这一行也已经超出资源上限。'),mathBox);return;}
       el('p',t('Fix x at ','固定 x = ')+frame.x+t('. The remaining resources allow these whole-number upper bounds for y.','，计算各项剩余资源允许的 y 的整数上限。'),mathBox);
       el('p',model.resources.map((r,j)=>term(r.name)+' '+frame.bounds[j]).join(' · '),mathBox);
-      const caps=model.resources.map((r,j)=>r.y?'\\left\\lfloor\\frac{'+answer.limits[j]+'-'+r.x+'\\cdot '+frame.x+'}{'+r.y+'}\\right\\rfloor':'8');
-      math(mathBox,'y_{\\max}=\\min\\left(8,'+caps.join(',')+'\\right)='+frame.y);
+      const caps=model.resources.map((r,j)=>r.y?'\\left\\lfloor\\frac{'+answer.limits[j]+'-'+r.x+'\\cdot '+frame.x+'}{'+r.y+'}\\right\\rfloor':String(result.maxCount));
+      math(mathBox,'y_{\\max}=\\min\\left('+caps.join(',')+'\\right)='+frame.y);
     }
     if(!detail)return;
     const used=detail.resources.map(r=>term(r.name)+' '+r.used+'/'+r.limit+' '+unit(r.unit));
@@ -183,11 +184,12 @@ function optimizationLab({host, part, level, initialPair, model, result, t, term
     note.textContent=method.value==='rows'?t('Fix x. Each resource gives an upper bound on y. Try the largest y that fits them all.','先固定 x，算出每项资源允许的 y 上限，再试同时满足这些上限的最大 y。'):t('Try every pair. A plan can compete for the lowest score only if every resource fits.','依次检查每对数量，只有满足所有限制的方案才参加最低分比较。');
     board.replaceChildren();summary.replaceChildren();
     el('strong',t('Step ','步骤 ')+frame.step+' / '+trace.length,board);
-    el('p',t('Current plan','当前方案')+'  '+(frame.y===null?t('No feasible y','本行无可行 y'):'('+frame.x+', '+frame.y+')'),board);
+    el('p',t('Current plan','当前方案')+'  '+(frame.y===null?'x = '+frame.x+' · '+t('No feasible y','本行无可行 y'):'('+frame.x+', '+frame.y+')'),board);
     el('p',t('Current score','当前分数')+'  '+fmt(frame.score),board);
     el('strong',t('Lowest so far','目前最低分')+'  '+fmt(frame.bestSoFar),board);
     if(end){
       el('h4',t('All minimum-score plans','所有最低分方案'),summary);
+      el('p',answer.feasibleCount+' / '+result.candidates.length+' '+t('feasible plans','个方案可行'),summary);
       el('p','Z = '+fmt(answer.bestScore)+' · '+answer.winners.map(([x,y])=>'('+x+', '+y+')').join(' · '),summary);
       if(method.value==='rows')el('p',t('For each winning row, check smaller y values until the score increases. This recovers ties within a row.','在每个获胜行，从行末逐个减小 y，直到分数变大，以找全并列方案。'),summary);
       if(engine==='python' && Array.isArray(answer.distribution) && answer.distribution.length){
@@ -230,6 +232,6 @@ function optimizationLab({host, part, level, initialPair, model, result, t, term
     for(const op of ['AND','OR'])button(op,()=>{feedback.textContent=op==='AND'?t('Correct. Every hard limit must hold. This plan is rejected.','正确。每项硬约束都必须满足，这个方案应被淘汰。'):t('OR would accept a plan when just one check passes. Look at the limit it breaks and try again.','OR 只要一项合格就会放行。看看超出的资源上限，再试一次。');},debug);
   }
   if(initialPair)method.value='enumeration';
-  loadMethod(initialPair ? 9*initialPair[0]+initialPair[1] : 0);
+  loadMethod(initialPair ? (result.maxCount+1)*initialPair[0]+initialPair[1] : 0);
   return ()=>{life.abort();stop();revision++;frameRevision++;};
 }

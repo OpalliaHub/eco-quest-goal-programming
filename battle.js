@@ -71,7 +71,7 @@
     }
     if (state.status !== 'won') return '';
     return `Pikachu won on turn ${state.turn}. HP shortfall ${hpGap}. Water shortfall ${waterGap}.` +
-      (hpGap + waterGap === 0 ? ' Both goals met!' : ' Compare a line that saves the Water Energy.');
+      (hpGap + waterGap === 0 ? ' Both goals met!' : difficulty === 'challenge' ? ' The last attack needs the Water Energy: every winning line has a Water shortfall of 1.' : ' Compare a line that saves the Water Energy.');
   }
 
   async function takeTurn(action) {
@@ -96,7 +96,7 @@
     if (summary) {
       message(summary, state.status === 'lost');
       document.dispatchEvent(new CustomEvent('ecoquest:battle-complete', {
-        detail: [summary, ...eventLog].join('\n')
+        detail: ['Battle difficulty: '+difficulty+'.', summary, ...eventLog].join('\n')
       }));
     }
   }
@@ -106,7 +106,7 @@
     state = BattleDrill.initial(difficulty);
     eventLog.length = 0;
     el('battle-log').replaceChildren();
-    message('Predict which move gives Pikachu enough Energy to attack on turn 2.');
+    message('Predict which resources you will need for the first Pika Punch.');
     paint();
   });
   paint();

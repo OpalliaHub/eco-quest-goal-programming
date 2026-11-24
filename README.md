@@ -21,7 +21,7 @@ Open [the fair reference lesson on this computer](http://127.0.0.1:8766/?lang=en
 | JavaScript, `studio-engine.js` | Executes the student's ordered blocks, including incorrect instructions. Saves predictions and test runs in the browser. |
 | Python, `kernel/lesson_model.py` | Checks resource limits and scores feasible plans with weighted shortfalls. Exhaustive search and row bounds both retain tied winners. |
 | Python, `kernel/chart.py` | Draws an SVG from the chosen search trace. The line records the lowest eligible score reached by that step. |
-| SQL, `kernel/score_distribution.sql` | Groups feasible plans by score in a temporary SQLite database. At the equal-weight fair, the minimum group contains three of 57 feasible plans. |
+| SQL, `kernel/score_distribution.sql` | Groups feasible plans by score in a temporary SQLite database. At the equal-weight fair, the minimum group contains three of 60 feasible plans. |
 | HTTP, JSON and SVG | Carry the reference calculations and chart to the bilingual lesson. Student-authored programs run separately from the reference. |
 
 Inspect the worked responses [for the 17-hour plan](http://127.0.0.1:8766/api/step?part=fair&level=0&x=1&y=8) and [for the 16-hour plan](http://127.0.0.1:8766/api/step?part=fair&level=0&x=2&y=7). To see the implementation, open the [Python model](kernel/lesson_model.py) and [SQL grouping query](kernel/score_distribution.sql). Run the kernel tests from this directory with `python3 -m unittest discover -s kernel`. Node.js enables the cross-language tests against the offline reference.
@@ -42,7 +42,7 @@ The card battle has three playable starting conditions. The foundation state sta
 
 ## Algorithm
 
-The visualiser enumerates every integer pair (x, y) in {0, …, 8}². It rejects hard-constraint violations, calculates nonnegative target shortfalls, divides them by the scenario's declared scales, and minimises their weighted sum. All numerical ties within 1e-9 are retained. Scales are classroom modelling choices. Changing a weight changes preferences, while changing a resource limit changes feasibility.
+For each mission the shared capacity gives the candidate range. The fair has ten display spaces, the garden seven beds, the Center eight shelves for packs, the survey seven rounds and the card club eight deck boxes. With ten display spaces the fair checks all 121 pairs from (0, 0) to (10, 10). It then applies the shared limit x + y ≤ 10 along with every other resource limit. The all-bookmark plan (10, 0) is feasible and scores 8.5 with equal weights. It rejects hard-constraint violations, calculates nonnegative target shortfalls, divides them by the scenario's declared scales, and minimises their weighted sum. All numerical ties within 1e-9 are retained. Scales are classroom modelling choices. Changing a weight changes preferences, while changing a resource limit changes feasibility.
 
 Row bounds provide a second exact method. For each x, divide each remaining resource by its per-y use and round down. The smallest bound gives the largest feasible y. Both goal outputs increase with y, so the endpoint minimises the score on that row. In a winning row, scan backwards while the score stays tied. This reasoning depends on nonnegative yields, weights and resource costs.
 
@@ -56,7 +56,7 @@ All coefficients are fictional classroom assumptions. The card drill is a fixed 
 
 ## Validation
 
-The 15 settings were checked for 81 candidates and at least one optimum. Battle action sequences were enumerated to verify a winning line for all three starting states and the unavoidable Water shortfall in the challenge state. Browser checks cover Chinese switching, step-by-step tracing and the three tied Eco Fair optima with score 1. These are software checks, not evidence of classroom learning gains.
+The 15 settings were checked against their own search ranges (121, 64, 81, 64 and 81 candidates respectively per difficulty) and all tied optima. Battle action sequences were enumerated to verify a winning line for all three starting states and the unavoidable Water shortfall in the challenge state. Browser checks cover Chinese switching, step-by-step tracing and the three tied Eco Fair optima with score 1. These are software checks, not evidence of classroom learning gains.
 
 ## License and assets
 

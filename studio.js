@@ -3,12 +3,14 @@ function fullCodingStudio({host,part,level,result,t,term,el,button}){
   const lang=(pair)=>t(...pair);
   const label=id=>lang(BlockEngine.labels[id]);
   const section=el('section',undefined,host,'block-studio');
-  const fresh=()=>({program:[...BlockEngine.starters[level]],attempts:[],explanation:'',pair:[1,8],expect:'skip',expectedScore:0});
+  const initialPair=part==='fair' ? [1,8] : (()=>{const p=result.candidates.find(p=>!p.feasible);return [p.x,p.y];})();
+  const fresh=()=>({program:[...BlockEngine.starters[level]],attempts:[],explanation:'',pair:initialPair,expect:'skip',expectedScore:0});
   let data=fresh();
   try{
     const saved=JSON.parse(localStorage.getItem(key));
     if(saved&&Array.isArray(saved.program)&&saved.program.length<=14&&saved.program.every(id=>Object.hasOwn(BlockEngine.labels,id))&&Array.isArray(saved.attempts)&&Array.isArray(saved.pair))data={...data,...saved};
   }catch(_){}
+  if(data.pair.length!==2 || !data.pair.every(n=>Number.isInteger(n) && n>=0 && n<=result.maxCount)) data.pair=initialPair;
   function save(){try{localStorage.setItem(key,JSON.stringify(data));}catch(_){}}
   el('h3',lang([['Repair the missing resource check','修复漏掉的资源检查'],['Debug the priority rule','调试目标优先级'],['Build the search from scratch','从空白搭建搜索程序']][level]),section);
   el('p',lang([['Run the starter. It scores a plan that breaks a limit. Inspect the failing pair, insert a check inside the loop, then run it again.','先运行起始程序。它给一个超限方案也打了分。查看失败的数对，在循环内插入检查，再运行。'],['Goal 1 now counts three times. Use a failing score to locate the faulty assignment. Check the same program on equal weights to expose lost ties.','目标一的权重变成了 3。用一个错误分数定位赋值错误，再用相同权重测试是否漏掉并列解。'],['Start with a loop. Test the limits, set both gaps, initialise the score to zero and add one penalty per goal. Then update the winner list. Choose a test pair and predict its output before running.','先放循环，检查资源并设置缺口。每个方案的分数从零开始，把两个目标的罚分逐项加入，再更新获胜名单。自己选一对数量做测试，先预测输出再运行。']][level]),section);
@@ -21,7 +23,7 @@ function fullCodingStudio({host,part,level,result,t,term,el,button}){
   el('p',t('Pick two counts. Predict whether the program should skip the pair or give it a score.','选两个数量，预测正确的程序应当跳过这个方案，还是给它打分。'),testBox);
   const productZH={fair:['书签批次','笔记本批次'],garden:['橙橙果种植床','桃桃果种植床'],center:['舒适补给包','野外补给包'],field:['河岸调查轮次','林地调查轮次'],cards:['入门牌组','战术牌组']};
   const picks=el('div',undefined,testBox,'learn-controls');
-  for(let j=0;j<2;j++){const l=el('label',t(result.model.products[j],productZH[part][j])+' ',picks);const s=el('select',undefined,l);for(let i=0;i<9;i++)el('option',String(i),s);s.value=data.pair[j];s.onchange=()=>{data.pair[j]=Number(s.value);save();output.replaceChildren();};}
+  for(let j=0;j<2;j++){const l=el('label',t(result.model.products[j],productZH[part][j])+' ',picks);const s=el('select',undefined,l);for(let i=0;i<=result.maxCount;i++)el('option',String(i),s);s.value=data.pair[j];s.onchange=()=>{data.pair[j]=Number(s.value);save();output.replaceChildren();};}
   const ex=el('select',undefined,picks);ex.setAttribute('aria-label',t('Expected behaviour','预测程序行为'));
   for(const [v,l] of [['skip',t('Expect skip','预计跳过')],['score',t('Expect score','预计得分')]]){el('option',l,ex).value=v;}ex.value=data.expect;
   const scoreLabel=el('label',t('Expected score ','预计分数 '),picks),num=el('input',undefined,scoreLabel);num.type='number';num.step='any';num.value=data.expectedScore;
